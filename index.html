@@ -198,8 +198,6 @@
     <div class="menu">
       <button class="menubtn primary" id="mNewForm">New Form <span>→</span></button>
       <button class="menubtn" id="mEntries">View Entries <span>→</span></button>
-      <button class="menubtn" id="mDaily">Daily Summary <span>→</span></button>
-      <button class="menubtn" id="mSup">Sup Summary <span>→</span></button>
     </div>
   </section>
 
@@ -274,38 +272,8 @@
     <div class="card" id="detAnswers"></div>
     <div class="sec">Remarks</div>
     <div class="card" id="detRemarks"></div>
-  </section>
-
-  <!-- DAILY SUMMARY -->
-  <section class="screen" id="scr-daily">
-    <div class="prompt">Shine Plan Daily Summary</div>
-    <div class="card">
-      <div class="row2">
-        <div>
-          <label class="fl">Date</label>
-          <input type="date" id="dailyDate">
-        </div>
-        <div>
-          <label class="fl">Search area</label>
-          <input type="text" id="dailySearch" placeholder="Search Area" autocomplete="off">
-        </div>
-      </div>
-    </div>
-    <div id="dailyStats"></div>
-    <div class="legend">
-      <span><i style="background:var(--ok)"></i>Checked</span>
-      <span><i style="background:var(--bad)"></i>Not checked</span>
-    </div>
-    <div class="dnote">Shows submissions made from THIS device only. The full team view comes from the SharePoint list.</div>
-    <div id="dailyWrap"></div>
-  </section>
-
-  <!-- SUP SUMMARY -->
-  <section class="screen" id="scr-sup">
-    <div class="prompt">Sup Summary</div>
-    <div class="card">
-      <div class="empty">Coming soon — waiting for the PIC / backup logic to be confirmed.</div>
-    </div>
+    <button class="btn" id="detEditBtn">Edit &amp; Resubmit</button>
+    <div class="dnote">Photos are not carried over - retake them if needed. Resubmitting with the same Site, BU, Category, Area and Date replaces the previous record in SharePoint.</div>
   </section>
 
   <!-- DONE -->
@@ -341,7 +309,7 @@ var EMAIL_TO = "sg.sha.cl-bizsupport@dsv.com";
 var SUBJECT_PREFIX = "5S Shine Plan";
 
 var SITES = {
-  "POU": ["POU"],
+  "APC": ["POU"],
   "CNC": ["CNC"],
   "TIC": ["TIC"],
   "Pioneer Walk": ["PW", "AMST", "MICRON", "LAMSP"],
@@ -458,7 +426,7 @@ function todayISO(){
 document.getElementById("heroDate").textContent =
   new Date().toLocaleDateString(undefined,{weekday:"long", day:"2-digit", month:"long", year:"numeric"});
 
-var SCREENS = ["site","menu","cat","form","entries","detail","daily","sup","done"];
+var SCREENS = ["site","menu","cat","form","entries","detail","done"];
 function show(name){
   SCREENS.forEach(function(s){document.getElementById("scr-"+s).classList.toggle("show", s===name);});
   document.getElementById("backBtn").style.display = name==="site" ? "none" : "block";
@@ -562,11 +530,6 @@ document.getElementById("mNewForm").onclick = function(){
   show("cat");
 };
 document.getElementById("mEntries").onclick = function(){ renderEntries(); show("entries"); };
-document.getElementById("mDaily").onclick = function(){
-  document.getElementById("dailyDate").value = todayISO();
-  renderDaily(); show("daily");
-};
-document.getElementById("mSup").onclick = function(){ show("sup"); };
 
 /* ── Page 3: Category ── */
 (function(){
@@ -791,33 +754,34 @@ submitBtn.onclick = async function(){
    With no photos we keep the plain mailto flow (To/Subject pre-filled). */
 async function sendReport(){
   if (!lastShare) return;
-  var files = lastShare.files || [];
+  var photos = lastShare.files || [];
   var msg = document.getElementById("doneMsg");
 
-  if (files.length && navigator.canShare && navigator.canShare({files: files})){
-    msg.textContent = "Choose your email app in the share menu. The photos are already attached and the report is in the body. Set To: " + EMAIL_TO + " (the first line of the message is the subject), then press Send.";
-    /* To + subject included in the text because the share sheet cannot
-       pre-fill the To field, and some mail apps ignore the title */
-    var shareText = "To: " + EMAIL_TO + "\nSubject: " + lastShare.subject + "\n\n" + lastShare.body;
+  /* Share text always goes in the body - this is what the flow reads.
+     Photos are attached via the share sheet when available. */
+  var shareText = "To: " + EMAIL_TO + "\nSubject: " + lastShare.subject + "\n\n" + lastShare.body;
+
+  /* Copy to clipboard as convenience */
+  try{ await navigator.clipboard.writeText(shareText); }catch(_){}
+
+  /* Try Web Share API with photos only (no txt file - iOS drops extra files) */
+  if (photos.length && navigator.canShare && navigator.canShare({files: photos})){
+    msg.textContent = "Choose your email app. Set To: " + EMAIL_TO + " then Send. Photos are attached and report is in the body.";
     try{
-      await navigator.share({ title: lastShare.subject, text: shareText, files: files });
+      await navigator.share({ title: lastShare.subject, text: shareText, files: photos });
+      return;
     }catch(err){
-      if (err && err.name === "AbortError") return;  /* operator closed the sheet - "Send Again" re-opens it */
-      /* share failed for another reason - fall back to mailto + downloads */
-      openMailto();
-      downloadPhotos(files);
-      msg.textContent = "Sharing was not available, so an email draft opened and the photos were downloaded. Attach the downloaded photos to the email before sending.";
+      if (err && err.name === "AbortError") return;
+      /* fall through to mailto fallback */
     }
-    return;
   }
 
+  /* No photos or share not supported - use mailto (pre-fills To/Subject/Body) */
+  msg.textContent = photos.length
+    ? "An email draft opened. The photos were downloaded - attach them before sending."
+    : "An email draft opened with everything filled in - just press Send.";
   openMailto();
-  if (files.length){
-    downloadPhotos(files);
-    msg.textContent = "An email draft opened with the address, subject and report already filled in. This device cannot attach files automatically, so the photos were downloaded - attach them to the email before pressing Send.";
-  } else {
-    msg.textContent = "An email draft opened with the address, subject and report already filled in - just press Send.";
-  }
+  if (photos.length) downloadPhotos(photos);
 }
 
 function downloadPhotos(files){
@@ -918,88 +882,40 @@ function showDetail(e){
     box.innerHTML = '<div class="empty">This entry was saved by an older version of the app - answers were not stored.</div>';
   }
   document.getElementById("detRemarks").textContent = e.rmk || "N/A";
+  document.getElementById("detEditBtn").onclick = function(){ editEntry(e); };
   show("detail");
 }
 
-/* ── Daily Summary ── */
-document.getElementById("dailyDate").addEventListener("input", renderDaily);
-document.getElementById("dailySearch").addEventListener("input", renderDaily);
-function renderDaily(){
-  var dt = document.getElementById("dailyDate").value || todayISO();
-  var q = document.getElementById("dailySearch").value.trim().toLowerCase();
-  var todays = getLog().filter(function(e){return e.date === dt;});
-
-  /* ── counters + progress bars ── */
-  var statWrap = document.getElementById("dailyStats");
-  statWrap.innerHTML = "";
-  var cats = Object.keys(AREAS);
-  function catDone(cat){
-    return AREAS[cat].filter(function(a){
-      return todays.some(function(e){return e.cat===cat && e.area===a;});
-    }).length;
-  }
-  var totalAreas = 0, doneAreas = 0;
-  cats.forEach(function(cat){ totalAreas += AREAS[cat].length; doneAreas += catDone(cat); });
-  var issues = todays.reduce(function(s,e){return s + (e.no||0);}, 0);
-
-  var row = document.createElement("div");
-  row.className = "statrow";
-  [[todays.length, "Checks today"],[doneAreas + "/" + totalAreas, "Areas done"],[issues, "Issues found"]]
-    .forEach(function(pair){
-      var d = document.createElement("div");
-      d.className = "stat";
-      d.innerHTML = '<div class="n"></div><div class="l"></div>';
-      d.querySelector(".n").textContent = pair[0];
-      d.querySelector(".l").textContent = pair[1];
-      row.appendChild(d);
+/* ── Edit & Resubmit: reload a past entry into the form ── */
+function editEntry(e){
+  state.site = e.site; state.bu = e.bu;
+  startForm(e.cat);                       /* builds a fresh form */
+  formArea = e.area;
+  setField("areaVal", e.area, false);
+  document.getElementById("empId").value = e.emp || "";
+  document.getElementById("dateInput").value = e.date || todayISO();
+  document.getElementById("remarks").value = (e.rmk && e.rmk !== "N/A") ? e.rmk : "";
+  if (e.shift){
+    state.shift = e.shift;
+    document.querySelectorAll("#shiftToggle button").forEach(function(b){
+      b.classList.toggle("on", b.dataset.v === e.shift);
     });
-  statWrap.appendChild(row);
-
-  var barCard = document.createElement("div");
-  barCard.className = "widgetcard";
-  var bt = document.createElement("div");
-  bt.className = "wtitle"; bt.textContent = "Progress by checklist";
-  barCard.appendChild(bt);
-  cats.forEach(function(cat){
-    var done = catDone(cat), total = AREAS[cat].length;
-    var pct = total ? Math.round(done/total*100) : 0;
-    var br = document.createElement("div");
-    br.className = "barrow";
-    br.innerHTML = '<div class="bl"><span></span><span></span></div><div class="bartrack"><div class="barfill"></div></div>';
-    br.querySelectorAll(".bl span")[0].textContent = cat;
-    br.querySelectorAll(".bl span")[1].textContent = done + " / " + total;
-    br.querySelector(".barfill").style.width = pct + "%";
-    barCard.appendChild(br);
-  });
-  statWrap.appendChild(barCard);
-
-  /* ── red/green area tiles (existing) ── */
-  var wrap = document.getElementById("dailyWrap");
-  wrap.innerHTML = "";
-  Object.keys(AREAS).forEach(function(cat){
-    var head = document.createElement("div");
-    head.className = "dsec"; head.textContent = cat;
-    var grid = document.createElement("div");
-    grid.className = "dgrid";
-    var shown = 0;
-    AREAS[cat].forEach(function(a){
-      if (q && a.toLowerCase().indexOf(q) < 0) return;
-      var hits = todays.filter(function(e){return e.cat===cat && e.area===a;});
-      var t = document.createElement("div");
-      t.className = "dtile " + (hits.length ? "ok" : "miss");
-      var s = document.createElement("small");
-      s.textContent = hits.length ? (hits.length + " check(s)") : "Not checked";
-      t.textContent = a;
-      t.appendChild(s);
-      grid.appendChild(t);
-      shown++;
-    });
-    if (shown){ wrap.appendChild(head); wrap.appendChild(grid); }
-  });
-  if (!wrap.children.length){
-    wrap.innerHTML = '<div class="empty">No areas match your search.</div>';
   }
+  (e.ans || []).forEach(function(a){
+    var i = a.n - 1;
+    if (i < 0 || i >= state.answers.length) return;
+    state.answers[i] = a.a;
+    state.comments[i] = a.c || "";
+    var card = qList.children[i];
+    if (!card) return;
+    var yes = card.querySelector(".yes"), no = card.querySelector(".no");
+    var cbox = card.querySelector(".qcomment"), ci = cbox.querySelector("input");
+    if (a.a === "Yes"){ yes.classList.add("on"); no.classList.remove("on"); cbox.classList.remove("show"); }
+    else if (a.a === "No"){ no.classList.add("on"); yes.classList.remove("on"); cbox.classList.add("show"); ci.value = a.c || ""; }
+  });
+  refresh();
 }
+
 </script>
 </body>
 </html>
