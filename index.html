@@ -309,14 +309,15 @@ var EMAIL_TO = "sg.sha.cl-bizsupport@dsv.com";
 var SUBJECT_PREFIX = "5S Shine Plan";
 
 /* How PC/laptop submissions send. Phones always use the share sheet.
-   "eml"    = downloads one file (5S-Report.eml). Double-click it and
-              Outlook opens a ready-to-send draft with To, Subject, the
-              report AND the photos already attached. Best option.
+   "share"  = email window opens with the photos already attached. The
+              To box is empty, so the address is copied ready to paste
+              (Ctrl+V). Report text sits below the signature - the flow
+              still reads it fine.
    "mailto" = draft opens with To/Subject/report filled in, but photos
               cannot be attached by a web page - they download instead.
-   "share"  = photos attached automatically, but Outlook leaves To and
-              Subject empty and puts the report below your signature. */
-var DESKTOP_SEND = "eml";
+   "eml"    = downloads a 5S-Report.eml file; double-click it and Outlook
+              opens a full draft with To, Subject, report and photos. */
+var DESKTOP_SEND = "share";
 
 var SITES = {
   "POU": ["POU"],
@@ -771,8 +772,15 @@ async function sendReport(){
      Photos are attached via the share sheet when available. */
   var shareText = "To: " + EMAIL_TO + "\nSubject: " + lastShare.subject + "\n\n" + lastShare.body;
 
-  /* Copy to clipboard as convenience */
-  try{ await navigator.clipboard.writeText(shareText); }catch(_){}
+  /* Clipboard: phones get the whole report (backup if a mail app drops
+     the body); PC share mode gets just the address, ready to paste into
+     the empty To box. */
+  var isMobileUA = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  try{
+    await navigator.clipboard.writeText(
+      (!isMobileUA && DESKTOP_SEND === "share") ? EMAIL_TO : shareText
+    );
+  }catch(_){}
 
   /* Web Share only on phones/tablets. On desktop (Windows/Mac) sharing
      into Outlook dumps the text below the signature and leaves To/Subject
@@ -789,7 +797,9 @@ async function sendReport(){
       var rptFile = new File([shareText], "5S-Report.txt", {type:"text/plain"});
       if (navigator.canShare({files: photos.concat([rptFile])})) shareFiles = photos.concat([rptFile]);
     }catch(_){}
-    msg.textContent = "Choose your email app. Set To: " + EMAIL_TO + " then Send. Photos and the report file are attached.";
+    msg.textContent = isMobile
+      ? "Choose your email app. Set To: " + EMAIL_TO + " then Send. Photos and the report file are attached."
+      : "Choose Outlook (Mail) in the share window. The photos are already attached. Click the To box and paste (Ctrl+V) - the address is copied - then press Send.";
     try{
       await navigator.share({ title: lastShare.subject, text: shareText, files: shareFiles });
       return;
