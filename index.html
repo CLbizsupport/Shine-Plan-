@@ -770,17 +770,18 @@ async function sendReport(){
 
   /* Share text always goes in the body - this is what the flow reads.
      Photos are attached via the share sheet when available. */
-  var shareText = "To: " + EMAIL_TO + "\nSubject: " + lastShare.subject + "\n\n" + lastShare.body;
+  /* First line must be the subject: several mail apps (Outlook iOS in
+     particular) take line 1 of the shared text as the subject line. A
+     "To:" line here would land in the Subject box instead. */
+  var shareText = lastShare.subject + "\n\n" + lastShare.body;
 
   /* Clipboard: phones get the whole report (backup if a mail app drops
      the body); PC share mode gets just the address, ready to paste into
      the empty To box. */
-  var isMobileUA = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  try{
-    await navigator.clipboard.writeText(
-      (!isMobileUA && DESKTOP_SEND === "share") ? EMAIL_TO : shareText
-    );
-  }catch(_){}
+  /* Put the address on the clipboard so the empty To box is a paste,
+     not typing. The report itself is backed up by the attached
+     5S-Report.txt if a mail app drops the body text. */
+  try{ await navigator.clipboard.writeText(EMAIL_TO); }catch(_){}
 
   /* Web Share only on phones/tablets. On desktop (Windows/Mac) sharing
      into Outlook dumps the text below the signature and leaves To/Subject
@@ -798,7 +799,7 @@ async function sendReport(){
       if (navigator.canShare({files: photos.concat([rptFile])})) shareFiles = photos.concat([rptFile]);
     }catch(_){}
     msg.textContent = isMobile
-      ? "Choose your email app. Set To: " + EMAIL_TO + " then Send. Photos and the report file are attached."
+      ? "Choose your email app. The photos and report are attached. Tap the To box and paste - the address " + EMAIL_TO + " is already copied - then press Send."
       : "Choose Outlook (Mail) in the share window. The photos are already attached. Click the To box and paste (Ctrl+V) - the address is copied - then press Send.";
     try{
       await navigator.share({ title: lastShare.subject, text: shareText, files: shareFiles });
