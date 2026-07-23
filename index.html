@@ -309,7 +309,7 @@ var EMAIL_TO = "sg.sha.cl-bizsupport@dsv.com";
 var SUBJECT_PREFIX = "5S Shine Plan";
 
 var SITES = {
-  "APC": ["POU"],
+  "POU": ["POU"],
   "CNC": ["CNC"],
   "TIC": ["TIC"],
   "Pioneer Walk": ["PW", "AMST", "MICRON", "LAMSP"],
@@ -764,11 +764,23 @@ async function sendReport(){
   /* Copy to clipboard as convenience */
   try{ await navigator.clipboard.writeText(shareText); }catch(_){}
 
-  /* Try Web Share API with photos only (no txt file - iOS drops extra files) */
-  if (photos.length && navigator.canShare && navigator.canShare({files: photos})){
-    msg.textContent = "Choose your email app. Set To: " + EMAIL_TO + " then Send. Photos are attached and report is in the body.";
+  /* Web Share only on phones/tablets. On desktop (Windows/Mac) sharing
+     into Outlook dumps the text below the signature and leaves To/Subject
+     empty - mailto fills the real fields properly there. */
+  var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (isMobile && photos.length && navigator.canShare && navigator.canShare({files: photos})){
+    /* Also attach the report as a txt file. Some mail apps (Outlook
+       Android especially) keep the files but drop the shared text, so
+       the flow can read ===DATA=== from this file when the body is
+       empty. If the phone refuses the extra file, send photos only. */
+    var shareFiles = photos;
     try{
-      await navigator.share({ title: lastShare.subject, text: shareText, files: photos });
+      var rptFile = new File([shareText], "5S-Report.txt", {type:"text/plain"});
+      if (navigator.canShare({files: photos.concat([rptFile])})) shareFiles = photos.concat([rptFile]);
+    }catch(_){}
+    msg.textContent = "Choose your email app. Set To: " + EMAIL_TO + " then Send. Photos and the report file are attached.";
+    try{
+      await navigator.share({ title: lastShare.subject, text: shareText, files: shareFiles });
       return;
     }catch(err){
       if (err && err.name === "AbortError") return;
