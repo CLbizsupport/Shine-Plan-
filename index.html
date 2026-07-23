@@ -790,19 +790,29 @@ async function sendReport(){
 
   /* No photos or share not supported - use mailto (pre-fills To/Subject/Body) */
   msg.textContent = photos.length
-    ? "An email draft opened. The photos were downloaded - attach them before sending."
+    ? "An email draft opened. Email programs do not allow a web page to attach files, so the " + photos.length + " photo(s) were saved to your Downloads folder - drag them into the email before pressing Send. If nothing downloaded, allow multiple downloads for this site when the browser asks."
     : "An email draft opened with everything filled in - just press Send.";
   openMailto();
   if (photos.length) downloadPhotos(photos);
 }
 
 function downloadPhotos(files){
+  /* Browsers block several downloads fired at once, and some ignore an
+     anchor that is not in the page - so add each link to the DOM and
+     stagger them ~400ms apart. */
   files.forEach(function(f,i){
-    var a = document.createElement("a");
-    a.href = URL.createObjectURL(f);
-    a.download = f.name || ("photo_"+(i+1)+".jpg");
-    a.click();
-    setTimeout(function(){URL.revokeObjectURL(a.href);}, 5000);
+    setTimeout(function(){
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(f);
+      a.download = f.name || ("photo_"+(i+1)+".jpg");
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function(){
+        URL.revokeObjectURL(a.href);
+        if (a.parentNode) a.parentNode.removeChild(a);
+      }, 5000);
+    }, i * 400);
   });
 }
 
