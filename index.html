@@ -308,6 +308,16 @@
 var EMAIL_TO = "sg.sha.cl-bizsupport@dsv.com";
 var SUBJECT_PREFIX = "5S Shine Plan";
 
+/* How PC/laptop submissions send. Phones always use the share sheet.
+   "eml"    = downloads one file (5S-Report.eml). Double-click it and
+              Outlook opens a ready-to-send draft with To, Subject, the
+              report AND the photos already attached. Best option.
+   "mailto" = draft opens with To/Subject/report filled in, but photos
+              cannot be attached by a web page - they download instead.
+   "share"  = photos attached automatically, but Outlook leaves To and
+              Subject empty and puts the report below your signature. */
+var DESKTOP_SEND = "eml";
+
 var SITES = {
   "POU": ["POU"],
   "CNC": ["CNC"],
@@ -768,7 +778,8 @@ async function sendReport(){
      into Outlook dumps the text below the signature and leaves To/Subject
      empty - mailto fills the real fields properly there. */
   var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  if (isMobile && photos.length && navigator.canShare && navigator.canShare({files: photos})){
+  var useShare = isMobile || DESKTOP_SEND === "share";
+  if (useShare && photos.length && navigator.canShare && navigator.canShare({files: photos})){
     /* Also attach the report as a txt file. Some mail apps (Outlook
        Android especially) keep the files but drop the shared text, so
        the flow can read ===DATA=== from this file when the body is
@@ -785,6 +796,28 @@ async function sendReport(){
     }catch(err){
       if (err && err.name === "AbortError") return;
       /* fall through to mailto fallback */
+    }
+  }
+
+  /* PC with photos: build a real email file so Outlook opens a draft
+     with To, Subject, body AND the photos already attached. */
+  if (!isMobile && DESKTOP_SEND === "eml" && photos.length){
+    try{
+      var eml = await buildEml(lastShare.subject, lastShare.body, photos);
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(eml);
+      a.download = "5S-Report.eml";
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function(){
+        URL.revokeObjectURL(a.href);
+        if (a.parentNode) a.parentNode.removeChild(a);
+      }, 5000);
+      msg.textContent = "A file named 5S-Report.eml was downloaded. Open it (double-click) - Outlook shows a ready email with the address, subject, report and " + photos.length + " photo(s) attached. Just press Send.";
+      return;
+    }catch(err){
+      /* fall through to mailto if the file could not be built */
     }
   }
 
@@ -814,6 +847,53 @@ function downloadPhotos(files){
       }, 5000);
     }, i * 400);
   });
+}
+
+/* ── Build a .eml email file with the photos attached ──
+   X-Unsent: 1 makes Outlook open it as a draft ready to send. */
+function b64utf8(str){
+  return btoa(unescape(encodeURIComponent(str)));
+}
+function wrap76(b64){
+  return (b64.match(/.{1,76}/g) || []).join("\r\n");
+}
+function fileToB64(file){
+  return new Promise(function(res, rej){
+    var r = new FileReader();
+    r.onload = function(){ res(String(r.result).split(",")[1] || ""); };
+    r.onerror = function(){ rej(new Error("read failed")); };
+    r.readAsDataURL(file);
+  });
+}
+async function buildEml(subject, body, photos){
+  var bnd = "----=_5SShine_" + Date.now();
+  var CRLF = "\r\n";
+  var m = [];
+  m.push("To: " + EMAIL_TO);
+  m.push("Subject: =?utf-8?B?" + b64utf8(subject) + "?=");
+  m.push("X-Unsent: 1");
+  m.push("MIME-Version: 1.0");
+  m.push('Content-Type: multipart/mixed; boundary="' + bnd + '"');
+  m.push("");
+  m.push("--" + bnd);
+  m.push('Content-Type: text/plain; charset="utf-8"');
+  m.push("Content-Transfer-Encoding: base64");
+  m.push("");
+  m.push(wrap76(b64utf8(body)));
+  for (var i = 0; i < photos.length; i++){
+    var f = photos[i];
+    var data = await fileToB64(f);
+    var name = f.name || ("photo_" + (i + 1) + ".jpg");
+    m.push("--" + bnd);
+    m.push('Content-Type: ' + (f.type || "image/jpeg") + '; name="' + name + '"');
+    m.push("Content-Transfer-Encoding: base64");
+    m.push('Content-Disposition: attachment; filename="' + name + '"');
+    m.push("");
+    m.push(wrap76(data));
+  }
+  m.push("--" + bnd + "--");
+  m.push("");
+  return new Blob([m.join(CRLF)], {type: "message/rfc822"});
 }
 
 /* address NOT encoded; subject/body encoded; body kept compact for mailto limits */
