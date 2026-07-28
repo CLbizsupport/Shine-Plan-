@@ -272,11 +272,9 @@
     <div class="card" id="detAnswers"></div>
     <div class="sec">Remarks</div>
     <div class="card" id="detRemarks"></div>
-    <button class="btn" id="detEditBtn">Edit &amp; Resubmit</button>
-    <div class="dnote">Photos are not carried over - retake them if needed. Resubmitting with the same Site, BU, Category, Area and Date replaces the previous record in SharePoint.</div>
   </section>
 
-  <!-- DONE -->
+  <!-- DONE -->  <!-- DONE -->
   <section class="screen" id="scr-done">
     <div class="done-icon">✓</div>
     <div class="done-h">Report ready to send</div>
@@ -308,65 +306,95 @@
 var EMAIL_TO = "sg.sha.cl-bizsupport@dsv.com";
 var SUBJECT_PREFIX = "5S Shine Plan";
 
-/* How PC/laptop submissions send. Phones always use the share sheet.
-   "share"  = email window opens with the photos already attached. The
-              To box is empty, so the address is copied ready to paste
-              (Ctrl+V). Report text sits below the signature - the flow
-              still reads it fine.
-   "mailto" = draft opens with To/Subject/report filled in, but photos
-              cannot be attached by a web page - they download instead.
-   "eml"    = downloads a 5S-Report.eml file; double-click it and Outlook
-              opens a full draft with To, Subject, report and photos. */
-var DESKTOP_SEND = "share";
-
 var SITES = {
-  "POU": ["POU"],
+  "APC": ["POU"],
   "CNC": ["CNC"],
   "TIC": ["TIC"],
   "Pioneer Walk": ["PW", "AMST", "MICRON", "LAMSP"],
-  "RedLion": ["FG"],
-  "RedLion 2": ["CW", "NSSC"],
+  "20 Tuas South": ["20 Tuas"],
   "SLC": ["AGS"],
-  "SLC 3": ["SCC(FG)"],
-  "20 Tuas South": ["FG + IMPLANT"],
+  "SLC3": ["SCC"],
+  "RedLion 2": ["NSSC", "CW"],
   "Changi North 1": ["General"],
   "Changi North 5": ["General"],
   "Changi North 6": ["DYSON"]
 };
 
+/* AREAS keyed by "Site|BU|Category" — each Site+BU only sees its own areas.
+   Area names CAN repeat across Site+BU (e.g. "Loading Bay") because the
+   SharePoint dedup key is Site+BU+Category+Area+Date, so they stay unique. */
 var AREAS = {
-  "Functional Area": [
-    "1A Loading Bay","1A Staging","1B Export","1B Inbound Admin","1B Inbound Loading Bay",
-    "1B Inbound Station","1B Outbound Admin","1B Outbound Large Part Sorting","1B RVN",
-    "20TS - Unit 03-01 - Office 1","20TS - Unit 03-01 - Office 2",
-    "20TS - Unit 03-03 - Office Area, Part Audit Area & Inbound Staging Carton",
-    "2A Crate Processing","2A Final Prep","2A Large Part","2A Loading Bay","2A Office",
-    "2A Outbound Staging","4B IC","4B J2J/RTS","4B Kit Cell","4B One Cell/BO",
-    "4B Outbound Detrash Stn","4B Outbound Epick/ BO Stn","4B Outbound Kit Audit",
-    "4B QC Focals","4B Toting","9CS L1","9CS L2","9CS L3","9CS Loading Bay",
-    "CNC L1","CNC L3","FWD","POU INBOUND AREA","POU OUTBOUND AREA","RVC","SCC Office","TKM",
-    "Warehouse - Bay 01-14","Warehouse - Dock 01-14","Warehouse 1&2 MHE Charging Point"
+  /* ──── APC / POU ──── */
+  "APC|POU|Functional Area": ["Inbound", "Outbound", "Decon"],
+
+  /* ──── CNC / CNC ──── */
+  "CNC|CNC|Functional Area": ["CNC L1", "CNC L3", "Decon"],
+
+  /* ──── TIC / TIC ──── */
+  "TIC|TIC|Functional Area": ["Incoming", "Large Part", "Decon", "DMR", "GLCC"],
+
+  /* ──── Pioneer Walk / PW ──── */
+  "Pioneer Walk|PW|Functional Area": ["Loading Bay"],
+  "Pioneer Walk|PW|Floor Storage":   ["15PW Unit 06-03 - Amat - O Floor Staging"],
+  "Pioneer Walk|PW|Rack Storage":    ["15PW Unit 06-03 Shelving Area / Aisle 50"],
+
+  /* ──── Pioneer Walk / AMST ──── */
+  "Pioneer Walk|AMST|Functional Area": ["Loading Bay"],
+  "Pioneer Walk|AMST|Floor Storage":   ["15PW Unit 06-03 - AMST Floor Storage"],
+
+  /* ──── Pioneer Walk / MICRON ──── */
+  "Pioneer Walk|MICRON|Functional Area": ["Loading Bay"],
+  "Pioneer Walk|MICRON|Floor Storage":   ["Floor Storage"],
+  "Pioneer Walk|MICRON|Rack Storage":    ["Racking Storage"],
+
+  /* ──── Pioneer Walk / LAMSP ──── */
+  "Pioneer Walk|LAMSP|Functional Area": ["Loading Bay"],
+  "Pioneer Walk|LAMSP|Floor Storage":   ["Floor Storage"],
+  "Pioneer Walk|LAMSP|Rack Storage":    ["Racking Storage"],
+
+  /* ──── 20 Tuas South / 20 Tuas ──── */
+  "20 Tuas South|20 Tuas|Functional Area": [
+    "20TS - Unit 03-01 - Office 1",
+    "20TS - Unit 03-01 - Office 2",
+    "20TS - Unit 03-03 - Office Area, Part Audit Area & Inbound Staging Carton"
   ],
-  "Floor Storage": [
-    "15PW Unit 06-03 - Amat - O Floor Staging","15PW Unit 06-03 - AMST Floor Storage",
-    "1A Storage","20TS - UNIT 03-03 A1 to A7 & G1 to G7","CNC L1","CNC L3",
-    "POU INBOUND AREA","POU OUTBOUND AREA",
-    "Warehouse 1 - L01-05","Warehouse 1 - M01-05","Warehouse 1 - N01-05","Warehouse 1 - O01-05",
-    "Warehouse 1 - P01-05","Warehouse 1 - Q04-06","Warehouse 1 - R04-06","Warehouse 1 - S04-06",
-    "Warehouse 2 - A01-06","Warehouse 2 - A21-26","Warehouse 2 - B01-05","Warehouse 2 - C01-05",
-    "Warehouse 2 - D01-05","Warehouse 2 - E01-05","Warehouse 2 - F05-06","Warehouse 2 - H05-06"
-  ],
-  "Rack Storage": [
-    "15PW Unit 06-03 Shelving Area / Aisle 50","1B Inbound Storage","1B Storage 31 - 34",
-    "1B Storage 35 - 38","20TS - Unit 03-03 6RKA, Racking & Loading","2A Racking 25 - 29",
-    "4A Storage 21 - 23","4A Storage 24 - 27","4A Storage 29 - 32","4A Storage 33 - 36",
-    "4B Storage 25 - 28","4B Storage 29 - 32","4B Storage 33 - 36","4B Storage 37 - 39",
-    "4B Storage 40 - 42","4B Storage 43 - 44","4B Storage 71 - 73","4B Storage 74 - 76",
-    "4B Storage 81 - 84","CNC L1","POU INBOUND AREA","POU OUTBOUND AREA",
-    "Warehouse 1 - Racking Area","Warehouse 2 - Racking Area"
-  ]
+  "20 Tuas South|20 Tuas|Floor Storage": ["20TS - UNIT 03-03 A1 to A7 & G1 to G7"],
+  "20 Tuas South|20 Tuas|Rack Storage":  ["20TS - Unit 03-03 6RKA, Racking & Loading"],
+
+  /* ──── SLC / AGS ──── */
+  "SLC|AGS|Functional Area": ["4A FWD", "4B RVC", "4C TKM"],
+  "SLC|AGS|Rack Storage":    ["4A Aisle 21-23", "4B Aisle 24-27"],
+
+  /* ──── SLC3 / SCC ──── */
+  "SLC3|SCC|Functional Area": ["Loading Dock", "Loading Bay"],
+  "SLC3|SCC|Floor Storage":   ["Floor Storage"],
+  "SLC3|SCC|Rack Storage":    ["Racking Storage"],
+
+  /* ──── RedLion 2 / NSSC ──── */
+  "RedLion 2|NSSC|Functional Area": ["Loading Bay"],
+  "RedLion 2|NSSC|Floor Storage":   ["Inbound Floor Storage", "Outbound Floor Storage"],
+  "RedLion 2|NSSC|Rack Storage":    ["Racking Storage"],
+
+  /* ──── RedLion 2 / CW ──── */
+  "RedLion 2|CW|Functional Area": ["Loading Bay"],
+  "RedLion 2|CW|Floor Storage":   ["Inbound Floor Storage", "Outbound Floor Storage"],
+  "RedLion 2|CW|Rack Storage":    ["Racking Storage"],
+
+  /* ──── Changi North 1 / General ──── (only Racking in your master — add FA/FS when ready) */
+  "Changi North 1|General|Rack Storage": ["Racking"],
+
+  /* ──── Changi North 5 / General ──── (empty in your master — add areas when ready) */
+
+  /* ──── Changi North 6 / DYSON ──── */
+  "Changi North 6|DYSON|Functional Area": ["Loading Bay"],
+  "Changi North 6|DYSON|Floor Storage":   ["Floor Storage"],
+  "Changi North 6|DYSON|Rack Storage":    ["Racking Storage"]
 };
 
+/* Helper — returns the area list for the current Site + BU + Category */
+function getAreas(site, bu, cat){ return AREAS[site + "|" + bu + "|" + cat] || []; }
+
+/* Questions stay per category — the same 12/14/15 questions regardless of site */
 var QUESTIONS = {
   "Functional Area": [
     "No irrelevant reference materials, documents, drawings, etc 没有无关的参考资料，文件，图纸等",
@@ -395,7 +423,7 @@ var QUESTIONS = {
     "Lighting is sufficient 照明足够",
     "Pest control mechanism in place and effective 害虫控制机制存在且有效",
     "Goods are kept clean 货物保持清洁",
-    "To be picture and Signage are available 工作站上找到“正确的标准图片”和标牌",
+    "To be picture and Signage are available 工作站上找到\u201c正确的标准图片\u201d和标牌",
     "No overflow of goods in location 位置无货物溢出"
   ],
   "Rack Storage": [
@@ -413,7 +441,7 @@ var QUESTIONS = {
     "Pest control mechanism in place and effective 害虫控制机制存在且有效",
     "Goods are kept clean 货物保持清洁",
     "Loose parts are pack in plastic bag or box 松散的零件装在塑料袋或盒子里",
-    "To be picture and Signage are available 工作站上找到“正确的标准图片”和标牌"
+    "To be picture and Signage are available 工作站上找到\u201c正确的标准图片\u201d和标牌"
   ]
 };
 
@@ -422,6 +450,7 @@ var CAT_NOTES = {
   "Floor Storage": "Floor stacking and staging areas",
   "Rack Storage": "Racking and high-bay areas"
 };
+var CATS = Object.keys(QUESTIONS);
 /* ================= end of editable part ==================== */
 
 
@@ -449,7 +478,7 @@ document.getElementById("backBtn").onclick = function(){
   else if (current==="cat") show("menu");
   else if (current==="form") show("cat");
   else if (current==="detail") show("entries");
-  else if (current==="entries" || current==="daily" || current==="sup") show("menu");
+  else if (current==="entries") show("menu");
   else show("site");
 };
 
@@ -538,31 +567,39 @@ siteContinue.onclick = function(){
 /* ── Page 2: Menu ── */
 document.getElementById("mNewForm").onclick = function(){
   document.getElementById("catCrumb").textContent = state.site + " · " + state.bu;
+  renderCats();
   show("cat");
 };
 document.getElementById("mEntries").onclick = function(){ renderEntries(); show("entries"); };
 
 /* ── Page 3: Category ── */
-(function(){
+function renderCats(){
   var wrap = document.getElementById("catList");
-  Object.keys(QUESTIONS).forEach(function(cat){
+  wrap.innerHTML = "";
+  CATS.forEach(function(cat){
+    var areas = getAreas(state.site, state.bu, cat);
+    if (!areas.length) return;            /* skip categories with no areas for this site+bu */
     var b = document.createElement("button");
     b.className = "catbtn";
+    var note = (CAT_NOTES[cat] || "") + " · " + areas.length + " area" + (areas.length>1?"s":"");
     var s = document.createElement("small");
-    s.textContent = CAT_NOTES[cat] || "";
+    s.textContent = note;
     b.textContent = cat;
     b.appendChild(s);
     b.onclick = function(){ startForm(cat); };
     wrap.appendChild(b);
   });
-})();
+  if (!wrap.children.length){
+    wrap.innerHTML = '<div class="empty">No areas are mapped for ' + state.site + ' · ' + state.bu + ' yet.</div>';
+  }
+}
 
 /* ── Page 4: Form ── */
 var formArea = "";
 var qList = document.getElementById("qList");
 document.getElementById("areaBtn").onclick = function(){
   if (!state.cat) return;
-  openPicker("Choose Area — " + state.cat, AREAS[state.cat], function(v){
+  openPicker("Choose Area — " + state.cat, getAreas(state.site, state.bu, state.cat), function(v){
     formArea = v;
     setField("areaVal", v, false);
     refresh();
@@ -765,146 +802,43 @@ submitBtn.onclick = async function(){
    With no photos we keep the plain mailto flow (To/Subject pre-filled). */
 async function sendReport(){
   if (!lastShare) return;
-  var photos = lastShare.files || [];
+  var files = lastShare.files || [];
   var msg = document.getElementById("doneMsg");
 
-  /* Share text always goes in the body - this is what the flow reads.
-     Photos are attached via the share sheet when available. */
-  /* First line must be the subject: several mail apps (Outlook iOS in
-     particular) take line 1 of the shared text as the subject line. A
-     "To:" line here would land in the Subject box instead. */
-  var shareText = lastShare.subject + "\n\n" + lastShare.body;
-
-  /* Clipboard: phones get the whole report (backup if a mail app drops
-     the body); PC share mode gets just the address, ready to paste into
-     the empty To box. */
-  /* Put the address on the clipboard so the empty To box is a paste,
-     not typing. The report itself is backed up by the attached
-     5S-Report.txt if a mail app drops the body text. */
-  try{ await navigator.clipboard.writeText(EMAIL_TO); }catch(_){}
-
-  /* Web Share only on phones/tablets. On desktop (Windows/Mac) sharing
-     into Outlook dumps the text below the signature and leaves To/Subject
-     empty - mailto fills the real fields properly there. */
-  var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  var useShare = isMobile || DESKTOP_SEND === "share";
-  if (useShare && photos.length && navigator.canShare && navigator.canShare({files: photos})){
-    /* Also attach the report as a txt file. Some mail apps (Outlook
-       Android especially) keep the files but drop the shared text, so
-       the flow can read ===DATA=== from this file when the body is
-       empty. If the phone refuses the extra file, send photos only. */
-    var shareFiles = photos;
+  if (files.length && navigator.canShare && navigator.canShare({files: files})){
+    msg.textContent = "Choose your email app in the share menu. The photos are already attached and the report is in the body. Set To: " + EMAIL_TO + " (the first line of the message is the subject), then press Send.";
+    /* To + subject included in the text because the share sheet cannot
+       pre-fill the To field, and some mail apps ignore the title */
+    var shareText = "To: " + EMAIL_TO + "\nSubject: " + lastShare.subject + "\n\n" + lastShare.body;
     try{
-      var rptFile = new File([shareText], "5S-Report.txt", {type:"text/plain"});
-      if (navigator.canShare({files: photos.concat([rptFile])})) shareFiles = photos.concat([rptFile]);
-    }catch(_){}
-    msg.textContent = isMobile
-      ? "Choose your email app. The photos and report are attached. Tap the To box and paste - the address " + EMAIL_TO + " is already copied - then press Send."
-      : "Choose Outlook (Mail) in the share window. The photos are already attached. Click the To box and paste (Ctrl+V) - the address is copied - then press Send.";
-    try{
-      await navigator.share({ title: lastShare.subject, text: shareText, files: shareFiles });
-      return;
+      await navigator.share({ title: lastShare.subject, text: shareText, files: files });
     }catch(err){
-      if (err && err.name === "AbortError") return;
-      /* fall through to mailto fallback */
+      if (err && err.name === "AbortError") return;  /* operator closed the sheet - "Send Again" re-opens it */
+      /* share failed for another reason - fall back to mailto + downloads */
+      openMailto();
+      downloadPhotos(files);
+      msg.textContent = "Sharing was not available, so an email draft opened and the photos were downloaded. Attach the downloaded photos to the email before sending.";
     }
+    return;
   }
 
-  /* PC with photos: build a real email file so Outlook opens a draft
-     with To, Subject, body AND the photos already attached. */
-  if (!isMobile && DESKTOP_SEND === "eml" && photos.length){
-    try{
-      var eml = await buildEml(lastShare.subject, lastShare.body, photos);
-      var a = document.createElement("a");
-      a.href = URL.createObjectURL(eml);
-      a.download = "5S-Report.eml";
-      a.style.display = "none";
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(function(){
-        URL.revokeObjectURL(a.href);
-        if (a.parentNode) a.parentNode.removeChild(a);
-      }, 5000);
-      msg.textContent = "A file named 5S-Report.eml was downloaded. Open it (double-click) - Outlook shows a ready email with the address, subject, report and " + photos.length + " photo(s) attached. Just press Send.";
-      return;
-    }catch(err){
-      /* fall through to mailto if the file could not be built */
-    }
-  }
-
-  /* No photos or share not supported - use mailto (pre-fills To/Subject/Body) */
-  msg.textContent = photos.length
-    ? "An email draft opened. Email programs do not allow a web page to attach files, so the " + photos.length + " photo(s) were saved to your Downloads folder - drag them into the email before pressing Send. If nothing downloaded, allow multiple downloads for this site when the browser asks."
-    : "An email draft opened with everything filled in - just press Send.";
   openMailto();
-  if (photos.length) downloadPhotos(photos);
+  if (files.length){
+    downloadPhotos(files);
+    msg.textContent = "An email draft opened with the address, subject and report already filled in. This device cannot attach files automatically, so the photos were downloaded - attach them to the email before pressing Send.";
+  } else {
+    msg.textContent = "An email draft opened with the address, subject and report already filled in - just press Send.";
+  }
 }
 
 function downloadPhotos(files){
-  /* Browsers block several downloads fired at once, and some ignore an
-     anchor that is not in the page - so add each link to the DOM and
-     stagger them ~400ms apart. */
   files.forEach(function(f,i){
-    setTimeout(function(){
-      var a = document.createElement("a");
-      a.href = URL.createObjectURL(f);
-      a.download = f.name || ("photo_"+(i+1)+".jpg");
-      a.style.display = "none";
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(function(){
-        URL.revokeObjectURL(a.href);
-        if (a.parentNode) a.parentNode.removeChild(a);
-      }, 5000);
-    }, i * 400);
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(f);
+    a.download = f.name || ("photo_"+(i+1)+".jpg");
+    a.click();
+    setTimeout(function(){URL.revokeObjectURL(a.href);}, 5000);
   });
-}
-
-/* ── Build a .eml email file with the photos attached ──
-   X-Unsent: 1 makes Outlook open it as a draft ready to send. */
-function b64utf8(str){
-  return btoa(unescape(encodeURIComponent(str)));
-}
-function wrap76(b64){
-  return (b64.match(/.{1,76}/g) || []).join("\r\n");
-}
-function fileToB64(file){
-  return new Promise(function(res, rej){
-    var r = new FileReader();
-    r.onload = function(){ res(String(r.result).split(",")[1] || ""); };
-    r.onerror = function(){ rej(new Error("read failed")); };
-    r.readAsDataURL(file);
-  });
-}
-async function buildEml(subject, body, photos){
-  var bnd = "----=_5SShine_" + Date.now();
-  var CRLF = "\r\n";
-  var m = [];
-  m.push("To: " + EMAIL_TO);
-  m.push("Subject: =?utf-8?B?" + b64utf8(subject) + "?=");
-  m.push("X-Unsent: 1");
-  m.push("MIME-Version: 1.0");
-  m.push('Content-Type: multipart/mixed; boundary="' + bnd + '"');
-  m.push("");
-  m.push("--" + bnd);
-  m.push('Content-Type: text/plain; charset="utf-8"');
-  m.push("Content-Transfer-Encoding: base64");
-  m.push("");
-  m.push(wrap76(b64utf8(body)));
-  for (var i = 0; i < photos.length; i++){
-    var f = photos[i];
-    var data = await fileToB64(f);
-    var name = f.name || ("photo_" + (i + 1) + ".jpg");
-    m.push("--" + bnd);
-    m.push('Content-Type: ' + (f.type || "image/jpeg") + '; name="' + name + '"');
-    m.push("Content-Transfer-Encoding: base64");
-    m.push('Content-Disposition: attachment; filename="' + name + '"');
-    m.push("");
-    m.push(wrap76(data));
-  }
-  m.push("--" + bnd + "--");
-  m.push("");
-  return new Blob([m.join(CRLF)], {type: "message/rfc822"});
 }
 
 /* address NOT encoded; subject/body encoded; body kept compact for mailto limits */
@@ -995,39 +929,9 @@ function showDetail(e){
     box.innerHTML = '<div class="empty">This entry was saved by an older version of the app - answers were not stored.</div>';
   }
   document.getElementById("detRemarks").textContent = e.rmk || "N/A";
-  document.getElementById("detEditBtn").onclick = function(){ editEntry(e); };
   show("detail");
 }
 
-/* ── Edit & Resubmit: reload a past entry into the form ── */
-function editEntry(e){
-  state.site = e.site; state.bu = e.bu;
-  startForm(e.cat);                       /* builds a fresh form */
-  formArea = e.area;
-  setField("areaVal", e.area, false);
-  document.getElementById("empId").value = e.emp || "";
-  document.getElementById("dateInput").value = e.date || todayISO();
-  document.getElementById("remarks").value = (e.rmk && e.rmk !== "N/A") ? e.rmk : "";
-  if (e.shift){
-    state.shift = e.shift;
-    document.querySelectorAll("#shiftToggle button").forEach(function(b){
-      b.classList.toggle("on", b.dataset.v === e.shift);
-    });
-  }
-  (e.ans || []).forEach(function(a){
-    var i = a.n - 1;
-    if (i < 0 || i >= state.answers.length) return;
-    state.answers[i] = a.a;
-    state.comments[i] = a.c || "";
-    var card = qList.children[i];
-    if (!card) return;
-    var yes = card.querySelector(".yes"), no = card.querySelector(".no");
-    var cbox = card.querySelector(".qcomment"), ci = cbox.querySelector("input");
-    if (a.a === "Yes"){ yes.classList.add("on"); no.classList.remove("on"); cbox.classList.remove("show"); }
-    else if (a.a === "No"){ no.classList.add("on"); yes.classList.remove("on"); cbox.classList.add("show"); ci.value = a.c || ""; }
-  });
-  refresh();
-}
 
 </script>
 </body>
