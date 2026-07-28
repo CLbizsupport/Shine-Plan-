@@ -156,6 +156,10 @@
     cursor:pointer;min-height:48px}
   .picker-opt:active{background:var(--pri-light)}
   button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--pri);outline-offset:2px}
+  .email-addr{display:block;font-size:1.1rem;font-weight:800;color:var(--pri);
+    text-decoration:none;padding:10px;background:var(--pri-light);border-radius:10px;
+    word-break:break-all;margin-bottom:4px}
+  .email-addr:active{background:#cdd5eb}
   @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -279,8 +283,16 @@
     <div class="done-icon">✓</div>
     <div class="done-h">Report ready to send</div>
     <div class="done-p" id="doneMsg"></div>
+    <div class="card" id="emailCard" style="text-align:center">
+      <label class="fl">Send to</label>
+      <a href="" id="emailLink" class="email-addr"></a>
+      <div style="margin-top:12px;display:flex;gap:8px">
+        <button class="btn" id="openEmailBtn" style="flex:1;margin:0">✉ Open Email</button>
+        <button class="btn ghost" id="shareBtn" style="flex:1;margin:0;display:none">📎 Share with Photos</button>
+      </div>
+      <div class="hint" id="photoHint" style="margin-top:8px"></div>
+    </div>
     <pre class="report" id="reportOut"></pre>
-    <button class="btn" id="sendAgainBtn">Send Again</button>
     <button class="btn ghost" id="homeBtn">Home</button>
   </section>
 </main>
@@ -767,7 +779,7 @@ function buildFullReport(){
   return L.join("\n");
 }
 
-submitBtn.onclick = async function(){
+submitBtn.onclick = function(){
   if (submitBtn.disabled) return;
   var dt = document.getElementById("dateInput").value;
   var subject = SUBJECT_PREFIX + " - " + state.site + " - " + state.bu + " - " + state.cat + " - " + formArea + " - " + dt;
@@ -790,44 +802,63 @@ submitBtn.onclick = async function(){
   document.getElementById("reportOut").textContent = buildFullReport();
   var files = state.photos.map(function(p){return p.file;});
   lastShare = { body: buildEmailBody(), subject: subject, files: files };
+  prepareDoneScreen();
   show("done");
-  sendReport();   /* runs inside the tap gesture */
 };
 
-/* ── Send ONE email with the photos attached ──
-   mailto: cannot attach files (browser limitation), so when there are
-   photos we use the Web Share API instead: the operator picks their
-   email app in the share sheet and the photos arrive as real
-   attachments with the report text in the body.
-   With no photos we keep the plain mailto flow (To/Subject pre-filled). */
-async function sendReport(){
-  if (!lastShare) return;
+/* ── Done screen — no auto-trigger, every action is a user tap ── */
+function prepareDoneScreen(){
+  /* tappable email address — opens mailto on tap */
+  var mailUrl = "mailto:" + EMAIL_TO +
+    "?subject=" + encodeURIComponent(lastShare.subject) +
+    "&body=" + encodeURIComponent(lastShare.body);
+  var link = document.getElementById("emailLink");
+  link.href = mailUrl;
+  link.textContent = EMAIL_TO;
+
+  var emailBtn = document.getElementById("openEmailBtn");
+  emailBtn.onclick = function(){ window.location.href = mailUrl; };
+
   var files = lastShare.files || [];
+  var shareBtn = document.getElementById("shareBtn");
+  var hint = document.getElementById("photoHint");
   var msg = document.getElementById("doneMsg");
 
-  if (files.length && navigator.canShare && navigator.canShare({files: files})){
-    msg.textContent = "Choose your email app in the share menu. The photos are already attached and the report is in the body. Set To: " + EMAIL_TO + " (the first line of the message is the subject), then press Send.";
-    /* To + subject included in the text because the share sheet cannot
-       pre-fill the To field, and some mail apps ignore the title */
-    var shareText = "To: " + EMAIL_TO + "\nSubject: " + lastShare.subject + "\n\n" + lastShare.body;
-    try{
-      await navigator.share({ title: lastShare.subject, text: shareText, files: files });
-    }catch(err){
-      if (err && err.name === "AbortError") return;  /* operator closed the sheet - "Send Again" re-opens it */
-      /* share failed for another reason - fall back to mailto + downloads */
-      openMailto();
-      downloadPhotos(files);
-      msg.textContent = "Sharing was not available, so an email draft opened and the photos were downloaded. Attach the downloaded photos to the email before sending.";
-    }
-    return;
-  }
-
-  openMailto();
   if (files.length){
-    downloadPhotos(files);
-    msg.textContent = "An email draft opened with the address, subject and report already filled in. This device cannot attach files automatically, so the photos were downloaded - attach them to the email before pressing Send.";
+    var canShare = navigator.canShare && navigator.canShare({files: files});
+    if (canShare){
+      /* Share is the PRIMARY action — it's the only way to attach photos */
+      shareBtn.style.display = "block";
+      shareBtn.className = "btn";                    /* solid primary style */
+      shareBtn.textContent = "📎 Send with Photos (" + files.length + ")";
+      emailBtn.className = "btn ghost";              /* demote Open Email */
+      emailBtn.textContent = "✉ Open Email (no photos)";
+      shareBtn.onclick = function(){
+        var shareText = "To: " + EMAIL_TO + "\nSubject: " + lastShare.subject + "\n\n" + lastShare.body;
+        navigator.share({ title: lastShare.subject, text: shareText, files: files }).catch(function(err){
+          if (err && err.name === "AbortError") return;
+          downloadPhotos(files);
+          hint.textContent = "Share not available — photos downloaded. Attach them to the email manually.";
+        });
+      };
+      msg.textContent = "Tap \"Send with Photos\" — pick your email app from the share sheet. The report and " + files.length + " photo(s) will be attached automatically.";
+      hint.textContent = "Set the To address to the email shown above, then press Send.";
+    } else {
+      /* device can't share files — download them, mailto for the text */
+      shareBtn.style.display = "none";
+      emailBtn.className = "btn";
+      emailBtn.textContent = "✉ Open Email";
+      downloadPhotos(files);
+      msg.textContent = "Tap \"Open Email\" — address, subject and report are filled in. Your " + files.length + " photo(s) were saved to your device — attach them to the email before sending.";
+      hint.textContent = "Check your Downloads or Photos app for the saved images.";
+    }
   } else {
-    msg.textContent = "An email draft opened with the address, subject and report already filled in - just press Send.";
+    /* no photos — straightforward mailto */
+    shareBtn.style.display = "none";
+    emailBtn.className = "btn";
+    emailBtn.textContent = "✉ Open Email";
+    msg.textContent = "Tap the email address or \"Open Email\" — address, subject and report are already filled in. Just press Send.";
+    hint.textContent = "";
   }
 }
 
@@ -841,24 +872,6 @@ function downloadPhotos(files){
   });
 }
 
-/* address NOT encoded; subject/body encoded; body kept compact for mailto limits */
-function openMailto(){
-  if (!lastShare) return;
-  var url = "mailto:" + EMAIL_TO +
-    "?subject=" + encodeURIComponent(lastShare.subject) +
-    "&body=" + encodeURIComponent(lastShare.body);
-  try{
-    var a = document.createElement("a");
-    a.href = url;
-    a.style.display = "none";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  }catch(_){
-    location.href = url;
-  }
-}
-document.getElementById("sendAgainBtn").onclick = sendReport;
 document.getElementById("homeBtn").onclick = function(){ location.reload(); };
 
 /* ── View Entries ── */
