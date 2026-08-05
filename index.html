@@ -286,6 +286,7 @@
       <label class="fl">Sent to</label>
       <div class="email-addr" id="emailLink"></div>
       <div class="hint" id="photoHint" style="margin-top:10px"></div>
+      <a href="#" id="saveContactBtn" class="btn ghost" style="margin-top:8px;width:100%;display:block;text-decoration:none">＋ Save this email to Contacts</a>
       <button class="btn" id="resendBtn" style="margin-top:12px;width:100%">Send again</button>
     </div>
     <pre class="report" id="reportOut"></pre>
@@ -854,6 +855,30 @@ function prepareDoneScreen(){
   hint.innerHTML = "The address has been <b>copied</b> — tap the <b>To</b> field in Outlook and paste, then press Send.";
 
   document.getElementById("resendBtn").onclick = function(){ sendNow(); };
+
+  /* Save-to-Contacts — generates a vCard. Once added, iOS auto-suggests the
+     address in the To field (this is the only way to get QuickType to offer
+     it; a web app cannot write into QuickType directly). */
+  var sc = document.getElementById("saveContactBtn");
+  if (sc && !sc._wired){
+    sc._wired = true;
+    sc.onclick = function(e){
+      e.preventDefault();
+      var vcard = [
+        "BEGIN:VCARD","VERSION:3.0",
+        "N:;5S Report;;;","FN:5S Report",
+        "ORG:DSV CL Unit 2",
+        "EMAIL;TYPE=WORK:" + EMAIL_TO,
+        "END:VCARD"
+      ].join("\r\n");
+      var blob = new Blob([vcard], {type:"text/vcard"});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url; a.download = "5S-Report.vcf";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 5000);
+    };
+  }
 }
 
 function downloadPhotos(files){
