@@ -730,7 +730,7 @@ function refresh(){
 }
 
 /* Compact email body — small enough for mailto limits, still has all data */
-function buildEmailBody(){
+function buildEmailBody(includeSendTo){
   var emp = document.getElementById("empId").value.trim();
   var dt = document.getElementById("dateInput").value;
   var rmks = document.getElementById("remarks").value.trim() || "N/A";
@@ -750,7 +750,17 @@ function buildEmailBody(){
     ph: state.photos.length,
     rmk: rmks
   };
-  var L = [
+  var L = [];
+  /* When there's a photo we go through the share sheet, which cannot
+     pre-fill the To field — so show the address at the very top for the
+     operator to copy into To. Without a photo, mailto fills To directly,
+     so this line is not added. */
+  if (includeSendTo){
+    L.push("SEND TO: " + EMAIL_TO);
+    L.push("(copy the address above into the To field)");
+    L.push("");
+  }
+  L = L.concat([
     "5S SHINE PLAN REPORT",
     "Site: " + state.site,
     "BU: " + state.bu,
@@ -764,7 +774,7 @@ function buildEmailBody(){
     "Remarks: " + rmks,
     "===DATA===",
     JSON.stringify(data)
-  ];
+  ]);
   return L.join("\n");
 }
 /* Full report shown on screen (with question text) */
@@ -797,7 +807,10 @@ submitBtn.onclick = function(){
   }catch(_){}
   document.getElementById("reportOut").textContent = buildFullReport();
   var files = state.photos.map(function(p){return p.file;});
-  lastShare = { body: buildEmailBody(), subject: subject, files: files };
+  var hasPhoto = files.length > 0;
+  /* photo -> share sheet (To can't pre-fill) -> put SEND TO line in body;
+     no photo -> mailto fills To directly -> no SEND TO line needed */
+  lastShare = { body: buildEmailBody(hasPhoto), subject: subject, files: files };
 
   /* copy the address NOW (inside the gesture) so it's on the clipboard for
      the To field, then fire the send in the SAME tap so iOS allows it */
@@ -807,29 +820,35 @@ submitBtn.onclick = function(){
   sendNow();          /* <-- fires inside the submit tap gesture */
 };
 
-/* ── Send: one action for everything. Always try the share sheet first so
-   the operator picks Outlook (not their default personal mail). Photos ride
-   along when present. mailto is only a last-resort fallback if the device
-   has no Web Share at all. ── */
+/* ── Send ──
+   Photo present : use the share sheet so the photo attaches. To cannot be
+                   pre-filled by iOS here, so the SEND TO line in the body +
+                   the copied clipboard cover it.
+   No photo      : use mailto — this pre-fills To, Subject AND body directly
+                   in the mail app, so the operator just presses Send. ── */
 function sendNow(){
   if (!lastShare) return;
   var files = lastShare.files || [];
-  var hasShare = !!navigator.share && !!navigator.canShare;
+  var hasPhoto = files.length > 0;
 
-  if (hasShare){
-    var withFiles = files.length && navigator.canShare({files: files});
-    var payload = withFiles
-      ? { title: lastShare.subject, text: lastShare.body, files: files }
-      : { title: lastShare.subject, text: lastShare.body };
-    if (!withFiles && files.length) downloadPhotos(files);   /* can't attach — save them */
-    navigator.share(payload).catch(function(err){
-      if (err && err.name === "AbortError") return;          /* user closed the sheet */
-      if (files.length && withFiles) downloadPhotos(files);
-      openMailtoNoPhoto();
-    });
+  if (!hasPhoto){
+    /* mailto fills the To field automatically */
+    openMailtoNoPhoto();
+    return;
+  }
+
+  /* photo path — share sheet */
+  var hasShare = !!navigator.share && !!navigator.canShare;
+  if (hasShare && navigator.canShare({files: files})){
+    navigator.share({ title: lastShare.subject, text: lastShare.body, files: files })
+      .catch(function(err){
+        if (err && err.name === "AbortError") return;   /* user closed the sheet */
+        downloadPhotos(files);
+        openMailtoNoPhoto();
+      });
   } else {
-    /* no Web Share at all (older desktop browsers) — mailto fallback */
-    if (files.length) downloadPhotos(files);
+    /* device can't share files — save photo, open mailto for the text */
+    downloadPhotos(files);
     openMailtoNoPhoto();
   }
 }
@@ -841,21 +860,31 @@ function openMailtoNoPhoto(){
   window.location.href = url;
 }
 
-/* ── Completed screen — confirmation + clear paste steps ── */
+/* ── Completed screen — steps differ by photo vs no-photo ── */
 function prepareDoneScreen(){
   document.getElementById("emailLink").textContent = EMAIL_TO;
   var files = lastShare.files || [];
-  var withPhotos = files.length && navigator.canShare && navigator.canShare({files: files});
+  var hasPhoto = files.length > 0;
   var msg = document.getElementById("doneMsg");
   var hint = document.getElementById("photoHint");
+  var addrBox = document.getElementById("emailCard");
 
-  msg.innerHTML =
-    '<b>1.</b> Pick <b>Outlook</b> from the list<br>' +
-    '<b>2.</b> Tap the <b>To</b> box → <b>Paste</b> (address already copied)<br>' +
-    '<b>3.</b> Press <b>Send</b>';
-  hint.textContent = withPhotos
-    ? files.length + " photo(s) are attached automatically."
-    : "Report is in the message body.";
+  if (hasPhoto){
+    /* share sheet — To must be pasted */
+    msg.innerHTML =
+      '<b>1.</b> Pick <b>Outlook</b> from the list<br>' +
+      '<b>2.</b> Tap the <b>To</b> box → <b>Paste</b><br>' +
+      '<b>3.</b> Press <b>Send</b>';
+    hint.textContent = files.length + " photo(s) attached automatically. The address is also at the top of the message.";
+    if (addrBox) addrBox.style.display = "block";
+  } else {
+    /* mailto — To is already filled */
+    msg.innerHTML =
+      '<b>1.</b> Your email opens with everything filled in<br>' +
+      '<b>2.</b> Press <b>Send</b>';
+    hint.textContent = "The To address is already filled in for you.";
+    if (addrBox) addrBox.style.display = "none";
+  }
 
   document.getElementById("resendBtn").onclick = function(){
     try{ if(navigator.clipboard) navigator.clipboard.writeText(EMAIL_TO); }catch(_){}
