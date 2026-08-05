@@ -283,10 +283,9 @@
     <div class="done-h">Completed</div>
     <div class="done-p" id="doneMsg"></div>
     <div class="card" id="emailCard" style="text-align:center">
-      <label class="fl">Sent to</label>
+      <label class="fl">Paste this into "To"</label>
       <div class="email-addr" id="emailLink"></div>
       <div class="hint" id="photoHint" style="margin-top:10px"></div>
-      <a href="#" id="saveContactBtn" class="btn ghost" style="margin-top:8px;width:100%;display:block;text-decoration:none">＋ Save this email to Contacts</a>
       <button class="btn" id="resendBtn" style="margin-top:12px;width:100%">Send again</button>
     </div>
     <pre class="report" id="reportOut"></pre>
@@ -842,7 +841,7 @@ function openMailtoNoPhoto(){
   window.location.href = url;
 }
 
-/* ── Completed screen — confirmation only ── */
+/* ── Completed screen — confirmation + clear paste steps ── */
 function prepareDoneScreen(){
   document.getElementById("emailLink").textContent = EMAIL_TO;
   var files = lastShare.files || [];
@@ -850,35 +849,18 @@ function prepareDoneScreen(){
   var msg = document.getElementById("doneMsg");
   var hint = document.getElementById("photoHint");
 
-  msg.textContent = "Choose Outlook from the share list to send your report"
-    + (withPhotos ? " with " + files.length + " photo(s) attached." : ".");
-  hint.innerHTML = "The address has been <b>copied</b> — tap the <b>To</b> field in Outlook and paste, then press Send.";
+  msg.innerHTML =
+    '<b>1.</b> Pick <b>Outlook</b> from the list<br>' +
+    '<b>2.</b> Tap the <b>To</b> box → <b>Paste</b> (address already copied)<br>' +
+    '<b>3.</b> Press <b>Send</b>';
+  hint.textContent = withPhotos
+    ? files.length + " photo(s) are attached automatically."
+    : "Report is in the message body.";
 
-  document.getElementById("resendBtn").onclick = function(){ sendNow(); };
-
-  /* Save-to-Contacts — generates a vCard. Once added, iOS auto-suggests the
-     address in the To field (this is the only way to get QuickType to offer
-     it; a web app cannot write into QuickType directly). */
-  var sc = document.getElementById("saveContactBtn");
-  if (sc && !sc._wired){
-    sc._wired = true;
-    sc.onclick = function(e){
-      e.preventDefault();
-      var vcard = [
-        "BEGIN:VCARD","VERSION:3.0",
-        "N:;5S Report;;;","FN:5S Report",
-        "ORG:DSV CL Unit 2",
-        "EMAIL;TYPE=WORK:" + EMAIL_TO,
-        "END:VCARD"
-      ].join("\r\n");
-      var blob = new Blob([vcard], {type:"text/vcard"});
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement("a");
-      a.href = url; a.download = "5S-Report.vcf";
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      setTimeout(function(){ URL.revokeObjectURL(url); }, 5000);
-    };
-  }
+  document.getElementById("resendBtn").onclick = function(){
+    try{ if(navigator.clipboard) navigator.clipboard.writeText(EMAIL_TO); }catch(_){}
+    sendNow();
+  };
 }
 
 function downloadPhotos(files){
