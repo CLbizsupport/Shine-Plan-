@@ -378,15 +378,57 @@ var AREAS = {
   "SLC3|SCC|Floor Storage":   ["Floor Storage"],
   "SLC3|SCC|Rack Storage":    ["Racking Storage"],
 
-  /* ──── RedLion 2 / NSSC ──── */
-  "RedLion 2|NSSC|Functional Area": ["Loading Bay"],
-  "RedLion 2|NSSC|Floor Storage":   ["Inbound Floor Storage", "Outbound Floor Storage"],
-  "RedLion 2|NSSC|Rack Storage":    ["Racking Storage"],
+  /* ──── RedLion 2 / NSSC (Level 1) ──── */
+  "RedLion 2|NSSC|Functional Area": [
+    "Crate Processing",
+    "Final Prep",
+    "Large Part",
+    "Loading Bay",
+    "Admin",
+    "Outbound Staging",
+    "Preship/Consolidation",
+    "Exception (J2J/RTS/QC Focal)",
+    "Kit Cell",
+    "One Cell/BO",
+    "Toting"
+  ],
+  "RedLion 2|NSSC|Rack Storage": [
+    "TTS Racking"
+  ],
 
-  /* ──── RedLion 2 / CW ──── */
-  "RedLion 2|CW|Functional Area": ["Loading Bay"],
-  "RedLion 2|CW|Floor Storage":   ["Inbound Floor Storage", "Outbound Floor Storage"],
-  "RedLion 2|CW|Rack Storage":    ["Racking Storage"],
+  /* ──── RedLion 2 / CW (5 levels, folded into area names) ──── */
+  "RedLion 2|CW|Functional Area": [
+    "L1 Crate Ops - Admin Area",
+    "L1 Crate Ops - Loading Bay",
+    "L1 Crate Ops - MHE Charging Area",
+    "L1 Crate Ops - Pallet Lifter",
+    "L2 Inbound - Admin",
+    "L2 Inbound - CSR",
+    "L2 Inbound - Loading Bay",
+    "L2 Inbound - Pallet Lifter",
+    "L2 Ship Svc - Kit Audit",
+    "L2 Ship Svc - Packing",
+    "L2 Ship Svc - Admin",
+    "L2 Ship Svc - Label and Stationery",
+    "L4 Inbound - Workstation",
+    "L4 Inbound - Sorting Area",
+    "L4 Inbound - Consumable Area",
+    "L4 Inbound - Tools Area",
+    "L4 Inbound - Pallet Lifter",
+    "L4 IC/Exceptions - Workstation DMR",
+    "L4 IC/Exceptions - IC",
+    "L4 IC/Exceptions - RVN",
+    "L4 IC/Exceptions - Expense"
+  ],
+  "RedLion 2|CW|Floor Storage": [
+    "L1 Crate Ops - Crate Storage location",
+    "L1 Crate Ops - GR and staging Area",
+    "L2 Inbound - Staging",
+    "L4 IC/Exceptions - Staging Area"
+  ],
+  "RedLion 2|CW|Rack Storage": [
+    "L2 Ship Svc - Racking"
+  ],
 
   /* ──── Changi North 1 / General ──── (only Racking in your master — add FA/FS when ready) */
   "Changi North 1|General|Rack Storage": ["Racking"],
