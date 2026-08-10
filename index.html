@@ -290,7 +290,7 @@
       <button class="btn ghost" id="resendBtn" style="margin-top:8px;width:100%">Send again</button>
     </div>
     <pre class="report" id="reportOut"></pre>
-    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-08-10b</div>
+    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-08-10c</div>
     <button class="btn ghost" id="homeBtn">Home</button>
   </section>
 </main>
@@ -531,6 +531,9 @@ document.getElementById("backBtn").onclick = function(){
   else if (current==="form") show("cat");
   else if (current==="detail") show("entries");
   else if (current==="entries") show("menu");
+  /* From Completed, go back to the form so the operator can correct an
+     answer and submit again — everything they entered is still there. */
+  else if (current==="done") show("form");
   else show("site");
 };
 
@@ -875,13 +878,11 @@ function sendNow(){
   var files = lastShare.files || [];
   var hasPhoto = files.length > 0;
 
-  /* Set to false to go back to the share sheet for photo submissions
-     (photo attaches automatically, but the To field is left empty). */
-  var PHOTO_VIA_OUTLOOK = true;
-
-  if (!hasPhoto || PHOTO_VIA_OUTLOOK){
-    /* Outlook opens with To, Subject and Body already filled. */
-    if (hasPhoto) downloadPhotos(files);   /* save so it can be attached */
+  /* No photo  → Outlook app opens with To, Subject and Body filled.
+     Has photo → share sheet, so the photo actually attaches. The To field
+                 can't be pre-filled on that path; the address is copied to
+                 the clipboard and printed at the top of the message. */
+  if (!hasPhoto){
     openMailtoNoPhoto();
     return;
   }
@@ -963,26 +964,27 @@ function prepareDoneScreen(){
   var addrBox = document.getElementById("emailCard");
   if (addrBox) addrBox.style.display = "block";   /* address always shown */
 
+  var oBtn = document.getElementById("outlookBtn");
+
   if (hasPhoto){
     msg.innerHTML =
-      '<b>1.</b> Tap <b>Open in Outlook</b> below<br>' +
-      '<b>2.</b> Tap the <b>paperclip</b> → attach your photo<br>' +
+      '<b>1.</b> Pick <b>Outlook</b> from the list<br>' +
+      '<b>2.</b> Tap the <b>To</b> box → <b>Paste</b><br>' +
       '<b>3.</b> Press <b>Send</b>';
-    hint.textContent = files.length + " photo(s) taken. The address is already filled in when Outlook opens.";
+    hint.textContent = files.length + " photo(s) attached. The address is copied and also at the top of the message.";
+    if (oBtn) oBtn.style.display = "none";
   } else {
     msg.innerHTML =
       '<b>1.</b> Outlook opens with everything filled in<br>' +
       '<b>2.</b> Press <b>Send</b>';
     hint.textContent = "If Outlook did not open, tap the button below.";
-  }
-
-  var oBtn = document.getElementById("outlookBtn");
-  if (oBtn){
-    oBtn.href = outlookComposeUrl();
-    oBtn.onclick = function(){
-      try{ if(navigator.clipboard) navigator.clipboard.writeText(EMAIL_TO); }catch(_){}
-      /* let the href fire normally */
-    };
+    if (oBtn){
+      oBtn.style.display = "block";
+      oBtn.href = outlookComposeUrl();
+      oBtn.onclick = function(){
+        try{ if(navigator.clipboard) navigator.clipboard.writeText(EMAIL_TO); }catch(_){}
+      };
+    }
   }
 
   document.getElementById("resendBtn").onclick = function(){
