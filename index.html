@@ -292,7 +292,7 @@
       <button class="btn ghost" id="resendBtn" style="margin-top:8px;width:100%">Send again</button>
     </div>
     <pre class="report" id="reportOut"></pre>
-    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-08-10d</div>
+    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-08-10f</div>
     <button class="btn ghost" id="homeBtn">Home</button>
   </section>
 </main>
@@ -836,6 +836,11 @@ function buildFullReport(){
 
 submitBtn.onclick = function(){
   if (submitBtn.disabled) return;
+
+  /* FIRST thing inside the tap — before any DOM work, screen change or
+     share sheet — so the clipboard write is never interrupted. */
+  copyEmailAddress();
+
   var dt = document.getElementById("dateInput").value;
   var subject = SUBJECT_PREFIX + " - " + state.site + " - " + state.bu + " - " + state.cat + " - " + formArea + " - " + dt;
   try{
@@ -862,7 +867,7 @@ submitBtn.onclick = function(){
      case Outlook ignores the mailto To parameter. */
   lastShare = { body: buildEmailBody(true), subject: subject, files: files };
 
-  /* copy the address NOW (inside the gesture) so it's on the clipboard */
+  /* copy again right before handing off, in case anything cleared it */
   copyEmailAddress();
   prepareDoneScreen();
   show("done");
@@ -912,38 +917,54 @@ function sendNow(){
   }
 }
 
-/* Copy the address. navigator.clipboard is blocked in some iOS/webview
-   situations, so fall back to a hidden textarea + execCommand, which works
-   as long as we're inside a user tap. */
+/* Copy the address to the clipboard.
+   iOS Safari is fussy: it ignores setSelectionRange on a hidden textarea, and
+   an opacity:0 element can't always be selected. The reliable recipe is a
+   contentEditable, non-readonly element with a real Range selection, a font
+   size of at least 16px, and position off-screen rather than invisible. */
 function copyEmailAddress(){
   var ok = false;
+
+  /* modern API first — fire and forget, it may be blocked */
   try{
-    var ta = document.createElement("textarea");
-    ta.value = EMAIL_TO;
-    ta.setAttribute("readonly","");
-    ta.style.position = "fixed";
-    ta.style.top = "0";
-    ta.style.left = "0";
-    ta.style.opacity = "0";
-    document.body.appendChild(ta);
-    ta.focus();
-    ta.setSelectionRange(0, ta.value.length);
-    ok = document.execCommand("copy");
-    ta.remove();
-  }catch(_){}
-  try{
-    if (navigator.clipboard){
+    if (navigator.clipboard && navigator.clipboard.writeText){
       navigator.clipboard.writeText(EMAIL_TO);
       ok = true;
     }
   }catch(_){}
+
+  /* execCommand path — synchronous, works inside a tap on iOS */
+  try{
+    var el = document.createElement("textarea");
+    el.value = EMAIL_TO;
+    el.contentEditable = "true";
+    el.readOnly = false;
+    el.style.position = "fixed";
+    el.style.left = "-9999px";
+    el.style.top = "0";
+    el.style.fontSize = "16px";      /* stops iOS zooming */
+    document.body.appendChild(el);
+
+    var range = document.createRange();
+    range.selectNodeContents(el);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    el.setSelectionRange(0, 999999);
+
+    if (document.execCommand("copy")) ok = true;
+    sel.removeAllRanges();
+    el.remove();
+  }catch(_){}
+
   return ok;
 }
 
 function flashCopied(){
   var b = document.getElementById("copyBtn");
   if (!b) return;
-  var old = b.textContent;
+  var old = b.getAttribute("data-label") || b.textContent;
+  b.setAttribute("data-label", old);
   b.textContent = "✓ Copied — now paste into To";
   setTimeout(function(){ b.textContent = old; }, 2200);
 }
