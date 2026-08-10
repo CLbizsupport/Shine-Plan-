@@ -253,7 +253,7 @@
       <div class="photobar" id="photoBar">
         <button type="button" class="addphoto" id="addPhotoBtn" aria-label="Add photo">＋</button>
       </div>
-      <input type="file" id="photoInput" accept="image/*" capture="environment" multiple hidden>
+      <input type="file" id="photoInput" accept="image/*" multiple hidden>
     </div>
     <button class="submit" id="submitBtn" disabled>Complete required fields</button>
     <div class="hint" id="submitHint"></div>
@@ -287,12 +287,13 @@
       <label class="fl">Paste this into "To"</label>
       <div class="email-addr" id="emailLink"></div>
       <button class="btn" id="copyBtn" style="margin-top:10px;width:100%">📋 Copy address</button>
+      <button class="btn ghost" id="shareBtn" style="margin-top:8px;width:100%;display:none">📎 Attach photo automatically instead</button>
       <div class="hint" id="photoHint" style="margin-top:10px"></div>
       <a class="btn" id="outlookBtn" href="#" style="margin-top:12px;width:100%;display:block;box-sizing:border-box;text-align:center;text-decoration:none">Open in Outlook</a>
       <button class="btn ghost" id="resendBtn" style="margin-top:8px;width:100%">Send again</button>
     </div>
     <pre class="report" id="reportOut"></pre>
-    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-08-10g</div>
+    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-08-11a</div>
     <button class="btn ghost" id="homeBtn">Home</button>
   </section>
 </main>
@@ -875,107 +876,105 @@ submitBtn.onclick = function(){
 };
 
 /* ── Send ──
-   Photo present : use the share sheet so the photo attaches. To cannot be
-                   pre-filled by iOS here, so the SEND TO line in the body +
-                   the copied clipboard cover it.
-   No photo      : use mailto — this pre-fills To, Subject AND body directly
-                   in the mail app, so the operator just presses Send. ── */
+   Every submission now opens the OUTLOOK APP with To, Subject and Body
+   already filled. Nothing depends on the clipboard. When there is a photo the
+   operator attaches it inside Outlook with the paperclip.
+   shareWithPhoto() stays available as an optional button. -- */
 function sendNow(){
   if (!lastShare) return;
+  openMailtoNoPhoto();
+}
+
+/* Optional: share sheet. Attaches the photo automatically but leaves the To
+   field empty. Wired to a secondary button, never fired on Submit. */
+function shareWithPhoto(){
+  if (!lastShare) return;
   var files = lastShare.files || [];
-  var hasPhoto = files.length > 0;
-
-  /* No photo  → Outlook app opens with To, Subject and Body filled.
-     Has photo → share sheet, so the photo actually attaches. The To field
-                 can't be pre-filled on that path; the address is copied to
-                 the clipboard and printed at the top of the message. */
-  if (!hasPhoto){
-    openMailtoNoPhoto();
-    return;
-  }
-
-  /* photo path — share sheet */
+  if (!files.length) return;
   var hasShare = !!navigator.share && !!navigator.canShare;
   if (hasShare && navigator.canShare({files: files})){
-    /* Outlook on iOS ignores `title` and takes the FIRST LINE of `text` as
-       the subject. So the subject must lead the text, otherwise the
-       "SEND TO:" line ends up in the Subject field. */
     navigator.share({
         title: lastShare.subject,
         text: lastShare.subject + "\n\n" + lastShare.body,
         files: files
       })
       .catch(function(err){
-        if (err && err.name === "AbortError") return;   /* user closed the sheet */
+        if (err && err.name === "AbortError") return;
         downloadPhotos(files);
-        openMailtoNoPhoto();
       });
-
-    /* The share sheet overwrites the pasteboard with what it is sharing, so
-       the copy done on Submit is lost. Re-copy straight after invoking it —
-       still inside the tap — and again on a couple of short timers, because
-       the sheet finishes setting the pasteboard asynchronously. */
-    copyEmailAddress();
-    setTimeout(copyEmailAddress, 0);
-    setTimeout(copyEmailAddress, 250);
-    setTimeout(copyEmailAddress, 700);
   } else {
-    /* device can't share files — save photo, open mailto for the text */
     downloadPhotos(files);
-    openMailtoNoPhoto();
   }
 }
 
 /* Copy the address to the clipboard.
-   iOS Safari is fussy: it ignores setSelectionRange on a hidden textarea, and
-   an opacity:0 element can't always be selected. The reliable recipe is a
-   contentEditable, non-readonly element with a real Range selection, a font
-   size of at least 16px, and position off-screen rather than invisible. */
+   iOS will not reliably copy from an element it considers off-screen or
+   invisible, so the primary path selects the REAL visible address element on
+   the Completed screen. Returns true only if a copy actually succeeded, so
+   the button can tell the operator the truth. */
 function copyEmailAddress(){
   var ok = false;
 
-  /* modern API first — fire and forget, it may be blocked */
+  /* the visible address box — make sure it always holds the address */
+  var el = document.getElementById("emailLink");
+  if (el && el.textContent !== EMAIL_TO) el.textContent = EMAIL_TO;
+
+  function selectAndCopy(node){
+    try{
+      var range = document.createRange();
+      range.selectNodeContents(node);
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      var done = document.execCommand("copy");
+      sel.removeAllRanges();
+      return done;
+    }catch(_){ return false; }
+  }
+
+  /* 1. the visible element, if it's actually on screen */
+  if (el && el.offsetParent !== null){
+    if (selectAndCopy(el)) ok = true;
+  }
+
+  /* 2. a temporary element placed inside the viewport (not off-screen) */
+  if (!ok){
+    try{
+      var tmp = document.createElement("div");
+      tmp.textContent = EMAIL_TO;
+      tmp.setAttribute("contenteditable", "true");
+      tmp.style.position = "fixed";
+      tmp.style.top = "0";
+      tmp.style.left = "0";
+      tmp.style.width = "100%";
+      tmp.style.fontSize = "16px";
+      tmp.style.color = "transparent";
+      tmp.style.background = "transparent";
+      tmp.style.zIndex = "-1";
+      document.body.appendChild(tmp);
+      if (selectAndCopy(tmp)) ok = true;
+      tmp.remove();
+    }catch(_){}
+  }
+
+  /* 3. modern API — often blocked, but free to try */
   try{
     if (navigator.clipboard && navigator.clipboard.writeText){
-      navigator.clipboard.writeText(EMAIL_TO);
-      ok = true;
+      navigator.clipboard.writeText(EMAIL_TO).then(function(){}, function(){});
     }
-  }catch(_){}
-
-  /* execCommand path — synchronous, works inside a tap on iOS */
-  try{
-    var el = document.createElement("textarea");
-    el.value = EMAIL_TO;
-    el.contentEditable = "true";
-    el.readOnly = false;
-    el.style.position = "fixed";
-    el.style.left = "-9999px";
-    el.style.top = "0";
-    el.style.fontSize = "16px";      /* stops iOS zooming */
-    document.body.appendChild(el);
-
-    var range = document.createRange();
-    range.selectNodeContents(el);
-    var sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
-    el.setSelectionRange(0, 999999);
-
-    if (document.execCommand("copy")) ok = true;
-    sel.removeAllRanges();
-    el.remove();
   }catch(_){}
 
   return ok;
 }
 
-function flashCopied(){
+function flashCopied(ok){
   var b = document.getElementById("copyBtn");
   if (!b) return;
   var old = b.getAttribute("data-label") || b.textContent;
   b.setAttribute("data-label", old);
-  b.textContent = "✓ Copied — now paste into To";
-  setTimeout(function(){ b.textContent = old; }, 2200);
+  b.textContent = ok ? "✓ Copied — now paste into To"
+                     : "✗ Copy blocked — long-press the address above";
+  setTimeout(function(){ b.textContent = old; }, 3000);
 }
 
 /* Build the Outlook-app compose URL for the current report. */
@@ -1033,22 +1032,28 @@ function prepareDoneScreen(){
   if (addrBox) addrBox.style.display = "block";   /* address always shown */
 
   var oBtn = document.getElementById("outlookBtn");
+  var sBtn = document.getElementById("shareBtn");
+  if (sBtn) sBtn.onclick = shareWithPhoto;
 
   var cBtn = document.getElementById("copyBtn");
   if (cBtn){
     cBtn.onclick = function(){
-      copyEmailAddress();
-      flashCopied();
+      flashCopied( copyEmailAddress() );
     };
   }
 
   if (hasPhoto){
     msg.innerHTML =
-      '<b>1.</b> Pick <b>Outlook</b> from the list<br>' +
-      '<b>2.</b> Tap the <b>To</b> box → <b>Paste</b><br>' +
+      '<b>1.</b> Outlook opens with the address already filled<br>' +
+      '<b>2.</b> Tap the <b>paperclip</b> → <b>Photos</b> → your photo<br>' +
       '<b>3.</b> Press <b>Send</b>';
-    hint.textContent = files.length + " photo(s) attached. The address is copied and also at the top of the message.";
-    if (oBtn) oBtn.style.display = "none";
+    hint.textContent = files.length + " photo(s) to attach. Take photos with the Camera app first so they are in your Photos.";
+    if (oBtn){
+      oBtn.style.display = "block";
+      oBtn.href = outlookComposeUrl();
+      oBtn.textContent = "Open in Outlook";
+    }
+    if (sBtn) sBtn.style.display = "block";
   } else {
     msg.innerHTML =
       '<b>1.</b> Outlook opens with everything filled in<br>' +
@@ -1057,10 +1062,9 @@ function prepareDoneScreen(){
     if (oBtn){
       oBtn.style.display = "block";
       oBtn.href = outlookComposeUrl();
-      oBtn.onclick = function(){
-        copyEmailAddress();
-      };
+      oBtn.textContent = "Open in Outlook";
     }
+    if (sBtn) sBtn.style.display = "none";
   }
 
   document.getElementById("resendBtn").onclick = function(){
