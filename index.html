@@ -882,7 +882,14 @@ function sendNow(){
   /* photo path — share sheet */
   var hasShare = !!navigator.share && !!navigator.canShare;
   if (hasShare && navigator.canShare({files: files})){
-    navigator.share({ title: lastShare.subject, text: lastShare.body, files: files })
+    /* Outlook on iOS ignores `title` and takes the FIRST LINE of `text` as
+       the subject. So the subject must lead the text, otherwise the
+       "SEND TO:" line ends up in the Subject field. */
+    navigator.share({
+        title: lastShare.subject,
+        text: lastShare.subject + "\n\n" + lastShare.body,
+        files: files
+      })
       .catch(function(err){
         if (err && err.name === "AbortError") return;   /* user closed the sheet */
         downloadPhotos(files);
@@ -895,11 +902,30 @@ function sendNow(){
   }
 }
 
+/* Opens the OUTLOOK APP directly (not iOS Mail) via Outlook's own URL
+   scheme. Many operators use personal phones where iOS Mail has no work
+   account, so ms-outlook:// is tried first. If Outlook isn't installed the
+   page stays visible and we fall back to plain mailto: after a moment. */
 function openMailtoNoPhoto(){
-  var url = "mailto:" + EMAIL_TO +
-    "?subject=" + encodeURIComponent(lastShare.subject) +
-    "&body=" + encodeURIComponent(lastShare.body);
-  window.location.href = url;
+  var s = encodeURIComponent(lastShare.subject);
+  var b = encodeURIComponent(lastShare.body);
+  var outlookUrl = "ms-outlook://compose?to=" + encodeURIComponent(EMAIL_TO) +
+                   "&subject=" + s + "&body=" + b;
+  var mailtoUrl  = "mailto:" + EMAIL_TO + "?subject=" + s + "&body=" + b;
+
+  /* If Outlook opens, the page is backgrounded and we cancel the fallback. */
+  var fallback = setTimeout(function(){
+    window.location.href = mailtoUrl;
+  }, 1500);
+
+  function cancelFallback(){ clearTimeout(fallback); }
+  document.addEventListener("visibilitychange", function(){
+    if (document.hidden) cancelFallback();
+  }, { once: true });
+  window.addEventListener("pagehide", cancelFallback, { once: true });
+  window.addEventListener("blur", cancelFallback, { once: true });
+
+  window.location.href = outlookUrl;
 }
 
 /* ── Completed screen — steps differ by photo vs no-photo ── */
