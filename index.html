@@ -286,9 +286,11 @@
       <label class="fl">Paste this into "To"</label>
       <div class="email-addr" id="emailLink"></div>
       <div class="hint" id="photoHint" style="margin-top:10px"></div>
-      <button class="btn" id="resendBtn" style="margin-top:12px;width:100%">Send again</button>
+      <a class="btn" id="outlookBtn" href="#" style="margin-top:12px;width:100%;display:block;box-sizing:border-box;text-align:center;text-decoration:none">Open in Outlook</a>
+      <button class="btn ghost" id="resendBtn" style="margin-top:8px;width:100%">Send again</button>
     </div>
     <pre class="report" id="reportOut"></pre>
+    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-08-10b</div>
     <button class="btn ghost" id="homeBtn">Home</button>
   </section>
 </main>
@@ -873,8 +875,13 @@ function sendNow(){
   var files = lastShare.files || [];
   var hasPhoto = files.length > 0;
 
-  if (!hasPhoto){
-    /* mailto fills the To field automatically */
+  /* Set to false to go back to the share sheet for photo submissions
+     (photo attaches automatically, but the To field is left empty). */
+  var PHOTO_VIA_OUTLOOK = true;
+
+  if (!hasPhoto || PHOTO_VIA_OUTLOOK){
+    /* Outlook opens with To, Subject and Body already filled. */
+    if (hasPhoto) downloadPhotos(files);   /* save so it can be attached */
     openMailtoNoPhoto();
     return;
   }
@@ -902,30 +909,48 @@ function sendNow(){
   }
 }
 
+/* Build the Outlook-app compose URL for the current report. */
+function outlookComposeUrl(){
+  return "ms-outlook://compose?to=" + encodeURIComponent(EMAIL_TO) +
+         "&subject=" + encodeURIComponent(lastShare.subject) +
+         "&body=" + encodeURIComponent(lastShare.body);
+}
+function mailtoUrlFor(){
+  return "mailto:" + EMAIL_TO +
+         "?subject=" + encodeURIComponent(lastShare.subject) +
+         "&body=" + encodeURIComponent(lastShare.body);
+}
+
+/* iOS is more reliable launching a custom scheme from a real <a> click than
+   from window.location, so route through a temporary anchor. */
+function goTo(url){
+  var a = document.createElement("a");
+  a.href = url;
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function(){ a.remove(); }, 0);
+}
+
 /* Opens the OUTLOOK APP directly (not iOS Mail) via Outlook's own URL
    scheme. Many operators use personal phones where iOS Mail has no work
-   account, so ms-outlook:// is tried first. If Outlook isn't installed the
-   page stays visible and we fall back to plain mailto: after a moment. */
+   account. If Outlook doesn't take over, fall back to plain mailto:. */
 function openMailtoNoPhoto(){
-  var s = encodeURIComponent(lastShare.subject);
-  var b = encodeURIComponent(lastShare.body);
-  var outlookUrl = "ms-outlook://compose?to=" + encodeURIComponent(EMAIL_TO) +
-                   "&subject=" + s + "&body=" + b;
-  var mailtoUrl  = "mailto:" + EMAIL_TO + "?subject=" + s + "&body=" + b;
+  var mailtoUrl = mailtoUrlFor();
+  var handedOff = false;
 
-  /* If Outlook opens, the page is backgrounded and we cancel the fallback. */
-  var fallback = setTimeout(function(){
-    window.location.href = mailtoUrl;
-  }, 1500);
-
-  function cancelFallback(){ clearTimeout(fallback); }
+  function cancelFallback(){ handedOff = true; }
   document.addEventListener("visibilitychange", function(){
     if (document.hidden) cancelFallback();
   }, { once: true });
   window.addEventListener("pagehide", cancelFallback, { once: true });
   window.addEventListener("blur", cancelFallback, { once: true });
 
-  window.location.href = outlookUrl;
+  setTimeout(function(){
+    if (!handedOff && !document.hidden) goTo(mailtoUrl);
+  }, 2500);
+
+  goTo(outlookComposeUrl());
 }
 
 /* ── Completed screen — steps differ by photo vs no-photo ── */
@@ -940,16 +965,24 @@ function prepareDoneScreen(){
 
   if (hasPhoto){
     msg.innerHTML =
-      '<b>1.</b> Pick <b>Outlook</b> from the list<br>' +
-      '<b>2.</b> Tap the <b>To</b> box → <b>Paste</b><br>' +
+      '<b>1.</b> Tap <b>Open in Outlook</b> below<br>' +
+      '<b>2.</b> Tap the <b>paperclip</b> → attach your photo<br>' +
       '<b>3.</b> Press <b>Send</b>';
-    hint.textContent = files.length + " photo(s) attached. The address is copied and also at the top of the message.";
+    hint.textContent = files.length + " photo(s) taken. The address is already filled in when Outlook opens.";
   } else {
     msg.innerHTML =
-      '<b>1.</b> Your email opens with the report filled in<br>' +
-      '<b>2.</b> If the <b>To</b> box is empty, tap it and <b>Paste</b><br>' +
-      '<b>3.</b> Press <b>Send</b>';
-    hint.textContent = "The address is copied and also at the top of the message.";
+      '<b>1.</b> Outlook opens with everything filled in<br>' +
+      '<b>2.</b> Press <b>Send</b>';
+    hint.textContent = "If Outlook did not open, tap the button below.";
+  }
+
+  var oBtn = document.getElementById("outlookBtn");
+  if (oBtn){
+    oBtn.href = outlookComposeUrl();
+    oBtn.onclick = function(){
+      try{ if(navigator.clipboard) navigator.clipboard.writeText(EMAIL_TO); }catch(_){}
+      /* let the href fire normally */
+    };
   }
 
   document.getElementById("resendBtn").onclick = function(){
