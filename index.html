@@ -156,9 +156,10 @@
     cursor:pointer;min-height:48px}
   .picker-opt:active{background:var(--pri-light)}
   button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--pri);outline-offset:2px}
-  .email-addr{display:block;width:100%;font-size:1rem;font-weight:800;color:var(--pri);
-    text-decoration:none;padding:12px 10px;background:var(--pri-light);border-radius:10px;
-    word-break:normal;overflow-wrap:anywhere;white-space:normal;text-align:center;line-height:1.4}
+  .email-addr{display:block;width:100%;font-size:.95rem;font-weight:800;color:var(--pri);
+    text-decoration:none;padding:12px 8px;background:var(--pri-light);border-radius:10px;
+    box-sizing:border-box;word-break:break-all;overflow-wrap:anywhere;white-space:normal;
+    text-align:center;line-height:1.4;-webkit-user-select:all;user-select:all}
   @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -285,12 +286,13 @@
     <div class="card" id="emailCard" style="text-align:center">
       <label class="fl">Paste this into "To"</label>
       <div class="email-addr" id="emailLink"></div>
+      <button class="btn" id="copyBtn" style="margin-top:10px;width:100%">📋 Copy address</button>
       <div class="hint" id="photoHint" style="margin-top:10px"></div>
       <a class="btn" id="outlookBtn" href="#" style="margin-top:12px;width:100%;display:block;box-sizing:border-box;text-align:center;text-decoration:none">Open in Outlook</a>
       <button class="btn ghost" id="resendBtn" style="margin-top:8px;width:100%">Send again</button>
     </div>
     <pre class="report" id="reportOut"></pre>
-    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-08-10c</div>
+    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-08-10d</div>
     <button class="btn ghost" id="homeBtn">Home</button>
   </section>
 </main>
@@ -861,7 +863,7 @@ submitBtn.onclick = function(){
   lastShare = { body: buildEmailBody(true), subject: subject, files: files };
 
   /* copy the address NOW (inside the gesture) so it's on the clipboard */
-  try{ if(navigator.clipboard) navigator.clipboard.writeText(EMAIL_TO); }catch(_){}
+  copyEmailAddress();
   prepareDoneScreen();
   show("done");
   sendNow();          /* <-- fires inside the submit tap gesture */
@@ -908,6 +910,42 @@ function sendNow(){
     downloadPhotos(files);
     openMailtoNoPhoto();
   }
+}
+
+/* Copy the address. navigator.clipboard is blocked in some iOS/webview
+   situations, so fall back to a hidden textarea + execCommand, which works
+   as long as we're inside a user tap. */
+function copyEmailAddress(){
+  var ok = false;
+  try{
+    var ta = document.createElement("textarea");
+    ta.value = EMAIL_TO;
+    ta.setAttribute("readonly","");
+    ta.style.position = "fixed";
+    ta.style.top = "0";
+    ta.style.left = "0";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.setSelectionRange(0, ta.value.length);
+    ok = document.execCommand("copy");
+    ta.remove();
+  }catch(_){}
+  try{
+    if (navigator.clipboard){
+      navigator.clipboard.writeText(EMAIL_TO);
+      ok = true;
+    }
+  }catch(_){}
+  return ok;
+}
+
+function flashCopied(){
+  var b = document.getElementById("copyBtn");
+  if (!b) return;
+  var old = b.textContent;
+  b.textContent = "✓ Copied — now paste into To";
+  setTimeout(function(){ b.textContent = old; }, 2200);
 }
 
 /* Build the Outlook-app compose URL for the current report. */
@@ -966,6 +1004,14 @@ function prepareDoneScreen(){
 
   var oBtn = document.getElementById("outlookBtn");
 
+  var cBtn = document.getElementById("copyBtn");
+  if (cBtn){
+    cBtn.onclick = function(){
+      copyEmailAddress();
+      flashCopied();
+    };
+  }
+
   if (hasPhoto){
     msg.innerHTML =
       '<b>1.</b> Pick <b>Outlook</b> from the list<br>' +
@@ -982,13 +1028,13 @@ function prepareDoneScreen(){
       oBtn.style.display = "block";
       oBtn.href = outlookComposeUrl();
       oBtn.onclick = function(){
-        try{ if(navigator.clipboard) navigator.clipboard.writeText(EMAIL_TO); }catch(_){}
+        copyEmailAddress();
       };
     }
   }
 
   document.getElementById("resendBtn").onclick = function(){
-    try{ if(navigator.clipboard) navigator.clipboard.writeText(EMAIL_TO); }catch(_){}
+    copyEmailAddress();
     sendNow();
   };
 }
