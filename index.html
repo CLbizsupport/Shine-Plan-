@@ -292,7 +292,7 @@
       <button class="btn ghost" id="resendBtn" style="margin-top:8px;width:100%">Send again</button>
     </div>
     <pre class="report" id="reportOut"></pre>
-    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-08-10f</div>
+    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-08-10g</div>
     <button class="btn ghost" id="homeBtn">Home</button>
   </section>
 </main>
@@ -910,6 +910,15 @@ function sendNow(){
         downloadPhotos(files);
         openMailtoNoPhoto();
       });
+
+    /* The share sheet overwrites the pasteboard with what it is sharing, so
+       the copy done on Submit is lost. Re-copy straight after invoking it —
+       still inside the tap — and again on a couple of short timers, because
+       the sheet finishes setting the pasteboard asynchronously. */
+    copyEmailAddress();
+    setTimeout(copyEmailAddress, 0);
+    setTimeout(copyEmailAddress, 250);
+    setTimeout(copyEmailAddress, 700);
   } else {
     /* device can't share files — save photo, open mailto for the text */
     downloadPhotos(files);
