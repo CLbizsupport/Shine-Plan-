@@ -285,7 +285,7 @@
     <div class="done-p" id="doneMsg"></div>
     <button class="btn" id="resendBtn" style="margin-top:16px;width:100%">Send again</button>
     <pre class="report" id="reportOut"></pre>
-    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-08-17b</div>
+    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-08-17c</div>
     <button class="btn ghost" id="homeBtn">Home</button>
   </section>
 </main>
@@ -797,8 +797,11 @@ function buildEmailBody(includeSendTo){
      pre-fill the To field — so show the address at the very top for the
      operator to copy into To. Without a photo, mailto fills To directly,
      so this line is not added. */
-  /* SEND TO line removed — Outlook now opens with address pre-filled
-     on all paths, so no copy-paste instruction is needed in the body. */
+  if (includeSendTo){
+    L.push("SEND TO: " + EMAIL_TO);
+    L.push("(copy the address above into the To field)");
+    L.push("");
+  }
   L = L.concat([
     "5S SHINE PLAN REPORT",
     "Site: " + state.site,
@@ -871,7 +874,33 @@ submitBtn.onclick = function(){
    shareWithPhoto() stays available as an optional button. -- */
 function sendNow(){
   if (!lastShare) return;
-  openMailtoNoPhoto();
+  var files = lastShare.files || [];
+  var hasPhoto = files.length > 0;
+
+  if (!hasPhoto){
+    /* No photo — Outlook opens fully composed, To pre-filled */
+    openMailtoNoPhoto();
+    return;
+  }
+
+  /* Has photo — use share sheet so the photo auto-attaches.
+     To field cannot be pre-filled this way; address is at the top of the body. */
+  var hasShare = !!navigator.share && !!navigator.canShare;
+  if (hasShare && navigator.canShare({files: files})){
+    navigator.share({
+        title: lastShare.subject,
+        text: lastShare.subject + "\n\n" + lastShare.body,
+        files: files
+      })
+      .catch(function(err){
+        if (err && err.name === "AbortError") return;
+        downloadPhotos(files);
+        openMailtoNoPhoto();
+      });
+  } else {
+    downloadPhotos(files);
+    openMailtoNoPhoto();
+  }
 }
 
 /* Optional: share sheet. Attaches the photo automatically but leaves the To
@@ -1018,10 +1047,10 @@ function prepareDoneScreen(){
 
   if (hasPhoto){
     msg.innerHTML =
-      'Outlook has opened with everything filled in.<br><br>' +
-      '<b>To attach your photo:</b><br>' +
-      'Tap the <b>paperclip</b> icon → <b>Photos</b> → pick your photo → <b>Send</b><br><br>' +
-      '<span style="opacity:.7;font-size:13px">Tip: take photos with the Camera app first so they appear in Photos.</span>';
+      '<b>1.</b> Pick <b>Outlook</b> from the list — photo attaches automatically<br>' +
+      '<b>2.</b> Tap the <b>To</b> field → type or paste <b>' + EMAIL_TO + '</b><br>' +
+      '<b>3.</b> Press <b>Send</b><br><br>' +
+      '<span style="opacity:.7;font-size:13px">The address is also at the top of the message body.</span>';
   } else {
     msg.innerHTML =
       'Outlook has opened with everything filled in.<br>' +
