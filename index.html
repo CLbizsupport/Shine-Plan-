@@ -285,7 +285,7 @@
     <div class="done-p" id="doneMsg"></div>
     <button class="btn" id="resendBtn" style="margin-top:16px;width:100%">Send again</button>
     <pre class="report" id="reportOut"></pre>
-    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-08-17a</div>
+    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-08-17b</div>
     <button class="btn ghost" id="homeBtn">Home</button>
   </section>
 </main>
@@ -1018,9 +1018,10 @@ function prepareDoneScreen(){
 
   if (hasPhoto){
     msg.innerHTML =
-      '<b>1.</b> Tap <b>Send again</b> below — Outlook opens with everything filled in<br>' +
-      '<b>2.</b> Tap the <b>paperclip</b> → <b>Photos</b> → pick your photo<br>' +
-      '<b>3.</b> Press <b>Send</b>';
+      'Outlook has opened with everything filled in.<br><br>' +
+      '<b>To attach your photo:</b><br>' +
+      'Tap the <b>paperclip</b> icon → <b>Photos</b> → pick your photo → <b>Send</b><br><br>' +
+      '<span style="opacity:.7;font-size:13px">Tip: take photos with the Camera app first so they appear in Photos.</span>';
   } else {
     msg.innerHTML =
       'Outlook has opened with everything filled in.<br>' +
