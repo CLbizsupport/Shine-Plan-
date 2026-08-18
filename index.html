@@ -285,7 +285,7 @@
     <div class="done-p" id="doneMsg"></div>
     <button class="btn" id="resendBtn" style="margin-top:16px;width:100%">Send again</button>
     <pre class="report" id="reportOut"></pre>
-    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-08-17c</div>
+    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-08-18a</div>
     <button class="btn ghost" id="homeBtn">Home</button>
   </section>
 </main>
@@ -889,7 +889,7 @@ function sendNow(){
   if (hasShare && navigator.canShare({files: files})){
     navigator.share({
         title: lastShare.subject,
-        text: lastShare.subject + "\n\n" + lastShare.body,
+        text: lastShare.body,
         files: files
       })
       .catch(function(err){
@@ -913,7 +913,7 @@ function shareWithPhoto(){
   if (hasShare && navigator.canShare({files: files})){
     navigator.share({
         title: lastShare.subject,
-        text: lastShare.subject + "\n\n" + lastShare.body,
+        text: lastShare.body,
         files: files
       })
       .catch(function(err){
