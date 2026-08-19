@@ -285,7 +285,7 @@
     <div class="done-p" id="doneMsg"></div>
     <button class="btn" id="resendBtn" style="margin-top:16px;width:100%">Send again</button>
     <pre class="report" id="reportOut"></pre>
-    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-08-18a</div>
+    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-08-19a</div>
     <button class="btn ghost" id="homeBtn">Home</button>
   </section>
 </main>
@@ -1018,10 +1018,21 @@ function goTo(url){
   setTimeout(function(){ a.remove(); }, 0);
 }
 
+/* Android's Outlook app does not register the ms-outlook:// scheme. Chrome
+   answers an unknown scheme with ERR_UNKNOWN_URL_SCHEME, which the operator
+   sees as "redirect failed". So Android goes straight to mailto:, which the
+   system resolves through the app chooser with Outlook listed. */
+var IS_ANDROID = /Android/i.test(navigator.userAgent || "");
+
 /* Opens the OUTLOOK APP directly (not iOS Mail) via Outlook's own URL
    scheme. Many operators use personal phones where iOS Mail has no work
    account. If Outlook doesn't take over, fall back to plain mailto:. */
 function openMailtoNoPhoto(){
+  if (IS_ANDROID){
+    goTo(mailtoUrlFor());
+    return;
+  }
+
   var mailtoUrl = mailtoUrlFor();
   var handedOff = false;
 
@@ -1051,6 +1062,10 @@ function prepareDoneScreen(){
       '<b>2.</b> Tap the <b>To</b> field → type or paste <b>' + EMAIL_TO + '</b><br>' +
       '<b>3.</b> Press <b>Send</b><br><br>' +
       '<span style="opacity:.7;font-size:13px">The address is also at the top of the message body.</span>';
+  } else if (IS_ANDROID){
+    msg.innerHTML =
+      'Pick <b>Outlook</b> if your phone asks which app to use.<br>' +
+      'Everything is filled in — just press <b>Send</b>.';
   } else {
     msg.innerHTML =
       'Outlook has opened with everything filled in.<br>' +
