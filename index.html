@@ -285,7 +285,7 @@
     <div class="done-p" id="doneMsg"></div>
     <button class="btn" id="resendBtn" style="margin-top:16px;width:100%">Send again</button>
     <pre class="report" id="reportOut"></pre>
-    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-08-19a</div>
+    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-08-20a</div>
     <button class="btn ghost" id="homeBtn">Home</button>
   </section>
 </main>
@@ -772,7 +772,7 @@ function refresh(){
 }
 
 /* Compact email body — small enough for mailto limits, still has all data */
-function buildEmailBody(includeSendTo){
+function buildEmailBody(includeSendTo, leadSubject){
   var emp = document.getElementById("empId").value.trim();
   var dt = document.getElementById("dateInput").value;
   var rmks = document.getElementById("remarks").value.trim() || "N/A";
@@ -793,10 +793,16 @@ function buildEmailBody(includeSendTo){
     rmk: rmks
   };
   var L = [];
+  /* iOS Outlook takes the FIRST LINE of shared text as the Subject and
+     ignores navigator.share({title}). So on the photo/share path we lead
+     with the real subject line — otherwise Outlook shows the SEND TO
+     address as the subject. */
+  if (leadSubject){
+    L.push(leadSubject);
+  }
   /* When there's a photo we go through the share sheet, which cannot
-     pre-fill the To field — so show the address at the very top for the
-     operator to copy into To. Without a photo, mailto fills To directly,
-     so this line is not added. */
+     pre-fill the To field — so show the address near the top for the
+     operator to copy into To. Without a photo, mailto fills To directly. */
   if (includeSendTo){
     L.push("SEND TO: " + EMAIL_TO);
     L.push("(copy the address above into the To field)");
@@ -858,7 +864,12 @@ submitBtn.onclick = function(){
   /* Always include the SEND TO line in the body — for photo (share sheet
      can't fill To) it's the copy source; for no-photo it's a safety net in
      case Outlook ignores the mailto To parameter. */
-  lastShare = { body: buildEmailBody(true), subject: subject, files: files };
+  lastShare = {
+    body: buildEmailBody(true),                 /* mailto path — subject is a real parameter */
+    shareBody: buildEmailBody(true, subject),   /* share path — subject must be line 1 */
+    subject: subject,
+    files: files
+  };
 
   /* copy again right before handing off, in case anything cleared it */
   copyEmailAddress();
@@ -889,7 +900,7 @@ function sendNow(){
   if (hasShare && navigator.canShare({files: files})){
     navigator.share({
         title: lastShare.subject,
-        text: lastShare.body,
+        text: lastShare.shareBody || lastShare.body,
         files: files
       })
       .catch(function(err){
@@ -913,7 +924,7 @@ function shareWithPhoto(){
   if (hasShare && navigator.canShare({files: files})){
     navigator.share({
         title: lastShare.subject,
-        text: lastShare.body,
+        text: lastShare.shareBody || lastShare.body,
         files: files
       })
       .catch(function(err){
