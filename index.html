@@ -285,7 +285,7 @@
     <div class="done-p" id="doneMsg"></div>
     <button class="btn" id="resendBtn" style="margin-top:16px;width:100%">Send again</button>
     <pre class="report" id="reportOut"></pre>
-    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-08-20a</div>
+    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-08-26b</div>
     <button class="btn ghost" id="homeBtn">Home</button>
   </section>
 </main>
@@ -312,9 +312,6 @@ var EMAIL_TO = "sg.sha.cl-bizsupport@dsv.com";
 var SUBJECT_PREFIX = "5S Shine Plan";
 
 var SITES = {
-  "APC": ["POU"],
-  "CNC": ["CNC"],
-  "TIC": ["TIC"],
   "Pioneer Walk": ["PW", "AMST", "MICRON", "LAMSP"],
   "20 Tuas South": ["20 Tuas"],
   "SLC": ["AGS"],
@@ -330,13 +327,10 @@ var SITES = {
    SharePoint dedup key is Site+BU+Category+Area+Date, so they stay unique. */
 var AREAS = {
   /* ──── APC / POU ──── */
-  "APC|POU|Functional Area": ["Inbound", "Outbound", "Decon"],
 
   /* ──── CNC / CNC ──── */
-  "CNC|CNC|Functional Area": ["CNC L1", "CNC L3", "Decon"],
 
   /* ──── TIC / TIC ──── */
-  "TIC|TIC|Functional Area": ["Incoming", "Large Part", "Decon", "DMR", "GLCC"],
 
   /* ──── Pioneer Walk / PW ──── */
   "Pioneer Walk|PW|Functional Area": ["Loading Bay"],
