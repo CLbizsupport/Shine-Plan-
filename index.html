@@ -285,7 +285,7 @@
     <div class="done-p" id="doneMsg"></div>
     <button class="btn" id="resendBtn" style="margin-top:16px;width:100%">Send again</button>
     <pre class="report" id="reportOut"></pre>
-    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-08-26b</div>
+    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-08-31a</div>
     <button class="btn ghost" id="homeBtn">Home</button>
   </section>
 </main>
@@ -317,8 +317,8 @@ var SITES = {
   "SLC": ["AGS"],
   "SLC3": ["SCC"],
   "RedLion 2": ["NSSC", "CW"],
-  "Changi North 1": ["General"],
-  "Changi North 5": ["General"],
+  "Changi North 1": ["APDC", "Trimble"],
+  "Changi North 5": ["Timken", "Zebra", "Carnival"],
   "Changi North 6": ["DYSON"]
 };
 
@@ -421,15 +421,35 @@ var AREAS = {
     "L2 Ship Svc - Racking"
   ],
 
-  /* ──── Changi North 1 / General ──── (only Racking in your master — add FA/FS when ready) */
-  "Changi North 1|General|Rack Storage": ["Racking"],
+  /* ──── Changi North 1 / APDC ──── */
+  "Changi North 1|APDC|Functional Area": ["Inbound", "Outbound", "Loading Bay"],
+  "Changi North 1|APDC|Floor Storage":   ["Staging Area"],
+  "Changi North 1|APDC|Rack Storage":    ["R11 to R21"],
 
-  /* ──── Changi North 5 / General ──── (empty in your master — add areas when ready) */
+  /* ──── Changi North 1 / Trimble ──── */
+  "Changi North 1|Trimble|Functional Area": ["Packing Area"],
+  "Changi North 1|Trimble|Floor Storage":   ["Inbound Staging", "Outbound Staging"],
+  "Changi North 1|Trimble|Rack Storage":    ["R11 to R32"],
+
+  /* ──── Changi North 5 / Timken ──── */
+  "Changi North 5|Timken|Functional Area": ["Outbound Packing Area", "Loading Bay"],
+  "Changi North 5|Timken|Floor Storage":   ["Staging Area"],
+  "Changi North 5|Timken|Rack Storage":    ["H08 to H20"],
+
+  /* ──── Changi North 5 / Zebra ──── */
+  "Changi North 5|Zebra|Functional Area": ["Packing Area", "PTO Workstation", "OPS Admin Area", "Loading Bay"],
+  "Changi North 5|Zebra|Floor Storage":   ["Staging Area", "Inbound Dock", "Outbound Dock", "Receiving Area"],
+  "Changi North 5|Zebra|Rack Storage":    ["H01 to H05", "K01 to K20"],
+
+  /* ──── Changi North 5 / Carnival ──── */
+  "Changi North 5|Carnival|Functional Area": ["Packing Area", "Labelling Line", "Cellular Line", "OBS Area", "Rework Area", "Office Area"],
+  "Changi North 5|Carnival|Floor Storage":   ["Inbound Staging", "Outbound Staging"],
+  "Changi North 5|Carnival|Rack Storage":    ["H06 to H07"],
 
   /* ──── Changi North 6 / DYSON ──── */
-  "Changi North 6|DYSON|Functional Area": ["Loading Bay"],
-  "Changi North 6|DYSON|Floor Storage":   ["Floor Storage"],
-  "Changi North 6|DYSON|Rack Storage":    ["Racking Storage"]
+  "Changi North 6|DYSON|Functional Area": ["Office Area", "Loading Bay"],
+  "Changi North 6|DYSON|Floor Storage":   ["Inbound Staging", "Outbound Staging"],
+  "Changi North 6|DYSON|Rack Storage":    ["W01 to W28", "D01 to D22"]
 };
 
 /* Helper — returns the area list for the current Site + BU + Category */
