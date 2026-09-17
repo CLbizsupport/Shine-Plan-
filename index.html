@@ -285,7 +285,7 @@
     <div class="done-p" id="doneMsg"></div>
     <button class="btn" id="resendBtn" style="margin-top:16px;width:100%">Send again</button>
     <pre class="report" id="reportOut"></pre>
-    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-08-31a</div>
+    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-09-08a</div>
     <button class="btn ghost" id="homeBtn">Home</button>
   </section>
 </main>
@@ -316,7 +316,7 @@ var SITES = {
   "20 Tuas South": ["20 Tuas"],
   "SLC": ["AGS"],
   "SLC3": ["SCC"],
-  "RedLion 2": ["NSSC", "CW"],
+  "RedLion 2": ["NSSC", "CW - Inbound", "CW - Outbound", "CW - Exceptional Handling"],
   "Changi North 1": ["APDC", "Trimble"],
   "Changi North 5": ["Timken", "Zebra", "Carnival"],
   "Changi North 6": ["DYSON"]
@@ -388,7 +388,7 @@ var AREAS = {
   ],
 
   /* ──── RedLion 2 / CW (5 levels, folded into area names) ──── */
-  "RedLion 2|CW|Functional Area": [
+  "RedLion 2|CW - Inbound|Functional Area": [
     "L1 Crate Ops - Admin Area",
     "L1 Crate Ops - Loading Bay",
     "L1 Crate Ops - MHE Charging Area",
@@ -405,20 +405,25 @@ var AREAS = {
     "L4 Inbound - Sorting Area",
     "L4 Inbound - Consumable Area",
     "L4 Inbound - Tools Area",
-    "L4 Inbound - Pallet Lifter",
-    "L4 IC/Exceptions - Workstation DMR",
-    "L4 IC/Exceptions - IC",
-    "L4 IC/Exceptions - RVN",
-    "L4 IC/Exceptions - Expense"
+    "L4 Inbound - Pallet Lifter"
   ],
-  "RedLion 2|CW|Floor Storage": [
+  "RedLion 2|CW - Inbound|Floor Storage": [
     "L1 Crate Ops - Crate Storage location",
     "L1 Crate Ops - GR and staging Area",
-    "L2 Inbound - Staging",
-    "L4 IC/Exceptions - Staging Area"
+    "L2 Inbound - Staging"
   ],
-  "RedLion 2|CW|Rack Storage": [
+  "RedLion 2|CW - Inbound|Rack Storage": [
     "L2 Ship Svc - Racking"
+  ],
+
+  /* CW - Outbound: TBC */
+
+  /* CW - Exceptional Handling: Functional Area only */
+  "RedLion 2|CW - Exceptional Handling|Functional Area": [
+    "WH1-L1-DMR/RVN",
+    "WH2-L4-RVN/DMR",
+    "WH2-L4-IC",
+    "WH2-L4-Expense"
   ],
 
   /* ──── Changi North 1 / APDC ──── */
