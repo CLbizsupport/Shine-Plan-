@@ -276,6 +276,8 @@
     <div class="card" id="detAnswers"></div>
     <div class="sec">Remarks</div>
     <div class="card" id="detRemarks"></div>
+    <button class="btn" id="detResendBtn" style="margin-top:16px;width:100%">Resend Email</button>
+    <div class="hint" id="detResendHint" style="text-align:center;margin-top:6px;opacity:.7"></div>
   </section>
 
   <!-- DONE -->
@@ -285,7 +287,7 @@
     <div class="done-p" id="doneMsg"></div>
     <button class="btn" id="resendBtn" style="margin-top:16px;width:100%">Send again</button>
     <pre class="report" id="reportOut"></pre>
-    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-09-08b</div>
+    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-09-21a</div>
     <button class="btn ghost" id="homeBtn">Home</button>
   </section>
 </main>
@@ -1228,7 +1230,79 @@ function showDetail(e){
     box.innerHTML = '<div class="empty">This entry was saved by an older version of the app - answers were not stored.</div>';
   }
   document.getElementById("detRemarks").textContent = e.rmk || "N/A";
+
+  /* Wire Resend button to this entry */
+  document.getElementById("detResendBtn").onclick = function(){ resendFromEntry(e); };
+  document.getElementById("detResendHint").textContent =
+    "No photo: opens Outlook with form pre-filled. Photos cannot be re-attached.";
   show("detail");
+}
+
+/* ── Resend Email from stored entry ── */
+function resendFromEntry(e){
+  var ansLine = (e.ans||[]).map(function(a){
+    var s = "Q"+a.n+"="+a.a;
+    if (a.a==="No" && a.c) s += "("+a.c+")";
+    return s;
+  }).join("; ");
+
+  var data = {
+    site: e.site, bu: e.bu, cat: e.cat, area: e.area,
+    emp: e.emp, date: e.date, shift: e.shift,
+    ans: e.ans||[], ph: 0, rmk: e.rmk||"N/A"
+  };
+
+  var subject = "5S Shine: " + e.site + " / " + e.bu + " / " + e.cat + " / " + e.area +
+                " (" + e.date + " " + e.shift + ")";
+
+  function bodyLines(includeSendTo, leadSub){
+    var L = [];
+    if (leadSub) L.push(leadSub);
+    if (includeSendTo){
+      L.push("SEND TO: " + EMAIL_TO);
+      L.push("(copy the address above into the To field)");
+      L.push("");
+    }
+    return L.concat([
+      "5S SHINE PLAN REPORT",
+      "Site: " + e.site,
+      "BU: " + e.bu,
+      "Category: " + e.cat,
+      "Area: " + e.area,
+      "EmployeeID: " + e.emp,
+      "Date: " + e.date,
+      "Shift: " + e.shift,
+      "Answers: " + ansLine,
+      "Photos: 0",
+      "Remarks: " + (e.rmk||"N/A"),
+      "===DATA===",
+      JSON.stringify(data)
+    ]);
+  }
+
+  lastShare = {
+    subject: subject,
+    body:      bodyLines(false).join("\n"),
+    shareBody: bodyLines(true, subject).join("\n"),
+    files: []
+  };
+
+  /* No photo — go direct to mailto/ms-outlook */
+  var isIOS = /iP(hone|ad|od)/.test(navigator.userAgent);
+  if (isIOS){
+    var url = "ms-outlook://compose?to=" + encodeURIComponent(EMAIL_TO) +
+              "&subject=" + encodeURIComponent(subject) +
+              "&body=" + encodeURIComponent(lastShare.body);
+    goTo(url);
+  } else {
+    var mailtoUrl = "mailto:" + EMAIL_TO +
+                   "?subject=" + encodeURIComponent(subject) +
+                   "&body=" + encodeURIComponent(lastShare.body);
+    var win = window.open(mailtoUrl, "_blank");
+    var handedOff = false;
+    if (win){ try{ if (!win.closed) handedOff = true; }catch(_){} }
+    window.location.href = mailtoUrl;
+  }
 }
 
 
