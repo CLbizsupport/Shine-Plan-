@@ -286,8 +286,9 @@
     <div class="done-h">Completed</div>
     <div class="done-p" id="doneMsg"></div>
     <button class="btn" id="resendBtn" style="margin-top:16px;width:100%">Send again</button>
+    <button class="btn" id="outlookBtn" style="margin-top:10px;width:100%;display:none">Send with Outlook app</button>
     <button class="btn ghost" id="otherMailBtn" style="margin-top:10px;width:100%;display:none">Not using Outlook? Send by other email app</button>
-    <div class="hint" id="otherMailHint" style="text-align:center;margin-top:6px;opacity:.7;display:none">To, Subject and message filled in. Photo is not attached.</div>
+    <div class="hint" id="otherMailHint" style="text-align:center;margin-top:6px;opacity:.7;display:none"></div>
     <pre class="report" id="reportOut"></pre>
     <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-10-07a</div>
     <button class="btn ghost" id="homeBtn">Home</button>
@@ -924,8 +925,14 @@ function sendNow(){
   var hasPhoto = files.length > 0;
 
   if (!hasPhoto){
-    /* No photo — Outlook opens fully composed, To pre-filled */
-    openMailtoNoPhoto();
+    /* No photo. Android: mailto (app chooser). iPhone: use the operator's
+       remembered choice — never fire ms-outlook:// blind, because Safari
+       shows an error when Outlook is not installed. No choice yet → the
+       Completed screen shows the two buttons. */
+    if (IS_ANDROID){ goTo(mailtoUrlFor()); return; }
+    var pref = getMailPref();
+    if (pref === "outlook") openMailtoNoPhoto();
+    else if (pref === "other") goTo(mailtoUrlFor());
     return;
   }
 
@@ -1096,11 +1103,73 @@ function openMailtoNoPhoto(){
   goTo(outlookComposeUrl());
 }
 
+/* Remembered mail app choice for iPhone no-photo sends: "outlook" | "other" | "" */
+var MAIL_PREF_KEY = "shine_mail_pref";
+function getMailPref(){
+  try{ return localStorage.getItem(MAIL_PREF_KEY) || ""; }catch(_){ return ""; }
+}
+function setMailPref(v){
+  try{ localStorage.setItem(MAIL_PREF_KEY, v); }catch(_){}
+}
+
 /* ── Completed screen — steps differ by photo vs no-photo ── */
 function prepareDoneScreen(){
   var files = lastShare ? (lastShare.files || []) : [];
   var hasPhoto = files.length > 0;
   var msg = document.getElementById("doneMsg");
+  var pref = getMailPref();
+  var iosChoice = !hasPhoto && !IS_ANDROID;   /* iPhone/PC no-photo path */
+
+  var outBtn    = document.getElementById("outlookBtn");
+  var otherBtn  = document.getElementById("otherMailBtn");
+  var otherHint = document.getElementById("otherMailHint");
+  var resendBtn = document.getElementById("resendBtn");
+
+  /* Buttons: photo → "other email app" fallback only.
+     iPhone no-photo → both buttons always (so a wrong choice can be changed).
+     Android no-photo → neither (mailto chooser already lists every app). */
+  outBtn.style.display    = iosChoice ? "" : "none";
+  otherBtn.style.display  = (hasPhoto || iosChoice) ? "" : "none";
+  otherHint.style.display = (hasPhoto || iosChoice) ? "" : "none";
+  otherBtn.textContent = hasPhoto ? "Not using Outlook? Send by other email app"
+                                  : "Send with other email app";
+  otherHint.textContent = hasPhoto
+    ? "To, Subject and message filled in. Photo is not attached."
+    : "Your phone will remember your choice.";
+  /* "Send again" only makes sense once there is a route to repeat */
+  resendBtn.style.display = (iosChoice && !pref) ? "none" : "";
+
+  outBtn.onclick = function(){
+    setMailPref("outlook");
+    openMailtoNoPhoto();
+  };
+  otherBtn.onclick = function(){
+    if (!lastShare) return;
+    if (!hasPhoto){
+      setMailPref("other");
+      goTo(mailtoUrlFor());
+      return;
+    }
+    var noPhotoBody = lastShare.body
+      .replace(/^Photos: \d+$/m, "Photos: 0")
+      .replace(/"ph":\d+/, '"ph":0');
+    goTo("mailto:" + EMAIL_TO +
+         "?subject=" + encodeURIComponent(lastShare.subject) +
+         "&body=" + encodeURIComponent(noPhotoBody));
+  };
+
+  if (iosChoice){
+    if (pref === "outlook"){
+      msg.innerHTML = 'Outlook has opened with everything filled in.<br>Just press <b>Send</b>.';
+    } else if (pref === "other"){
+      msg.innerHTML = 'Your email app has opened with everything filled in.<br>Just press <b>Send</b>.';
+    } else {
+      msg.innerHTML = 'Choose how to send this report.<br>' +
+        'No Outlook on this phone? Tap <b>Send with other email app</b>.';
+    }
+    resendBtn.onclick = function(){ sendNow(); };
+    return;
+  }
 
   if (hasPhoto){
     msg.innerHTML =
@@ -1120,24 +1189,6 @@ function prepareDoneScreen(){
 
   document.getElementById("resendBtn").onclick = function(){
     sendNow();
-  };
-
-  /* Other email apps (Gmail, iPhone Mail, Samsung Mail…) ignore the subject
-     from the share sheet. This button skips the share sheet and opens a
-     mailto: link instead, so To + Subject + Body are filled. Photo is not
-     attached, so the photo count is set to 0 in the body. */
-  var otherBtn  = document.getElementById("otherMailBtn");
-  var otherHint = document.getElementById("otherMailHint");
-  otherBtn.style.display  = hasPhoto ? "" : "none";
-  otherHint.style.display = hasPhoto ? "" : "none";
-  otherBtn.onclick = function(){
-    if (!lastShare) return;
-    var noPhotoBody = lastShare.body
-      .replace(/^Photos: \d+$/m, "Photos: 0")
-      .replace(/"ph":\d+/, '"ph":0');
-    goTo("mailto:" + EMAIL_TO +
-         "?subject=" + encodeURIComponent(lastShare.subject) +
-         "&body=" + encodeURIComponent(noPhotoBody));
   };
 }
 
@@ -1278,21 +1329,14 @@ function resendFromEntry(e){
     files: []
   };
 
-  /* No photo — go direct to mailto/ms-outlook */
+  /* No photo. Only open the Outlook app if this phone already chose Outlook
+     (otherwise Safari errors when Outlook isn't installed). Everyone else
+     gets plain mailto, which opens the phone's default email app. */
   var isIOS = /iP(hone|ad|od)/.test(navigator.userAgent);
-  if (isIOS){
-    var url = "ms-outlook://compose?to=" + encodeURIComponent(EMAIL_TO) +
-              "&subject=" + encodeURIComponent(subject) +
-              "&body=" + encodeURIComponent(lastShare.body);
-    goTo(url);
+  if (isIOS && getMailPref() === "outlook"){
+    openMailtoNoPhoto();
   } else {
-    var mailtoUrl = "mailto:" + EMAIL_TO +
-                   "?subject=" + encodeURIComponent(subject) +
-                   "&body=" + encodeURIComponent(lastShare.body);
-    var win = window.open(mailtoUrl, "_blank");
-    var handedOff = false;
-    if (win){ try{ if (!win.closed) handedOff = true; }catch(_){} }
-    window.location.href = mailtoUrl;
+    goTo(mailtoUrlFor());
   }
 }
 
