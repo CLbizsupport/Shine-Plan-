@@ -286,8 +286,10 @@
     <div class="done-h">Completed</div>
     <div class="done-p" id="doneMsg"></div>
     <button class="btn" id="resendBtn" style="margin-top:16px;width:100%">Send again</button>
+    <button class="btn ghost" id="otherMailBtn" style="margin-top:10px;width:100%;display:none">Not using Outlook? Send by other email app</button>
+    <div class="hint" id="otherMailHint" style="text-align:center;margin-top:6px;opacity:.7;display:none">To, Subject and message filled in. Photo is not attached.</div>
     <pre class="report" id="reportOut"></pre>
-    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-09-30a</div>
+    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-10-07a</div>
     <button class="btn ghost" id="homeBtn">Home</button>
   </section>
 </main>
@@ -1118,6 +1120,24 @@ function prepareDoneScreen(){
 
   document.getElementById("resendBtn").onclick = function(){
     sendNow();
+  };
+
+  /* Other email apps (Gmail, iPhone Mail, Samsung Mail…) ignore the subject
+     from the share sheet. This button skips the share sheet and opens a
+     mailto: link instead, so To + Subject + Body are filled. Photo is not
+     attached, so the photo count is set to 0 in the body. */
+  var otherBtn  = document.getElementById("otherMailBtn");
+  var otherHint = document.getElementById("otherMailHint");
+  otherBtn.style.display  = hasPhoto ? "" : "none";
+  otherHint.style.display = hasPhoto ? "" : "none";
+  otherBtn.onclick = function(){
+    if (!lastShare) return;
+    var noPhotoBody = lastShare.body
+      .replace(/^Photos: \d+$/m, "Photos: 0")
+      .replace(/"ph":\d+/, '"ph":0');
+    goTo("mailto:" + EMAIL_TO +
+         "?subject=" + encodeURIComponent(lastShare.subject) +
+         "&body=" + encodeURIComponent(noPhotoBody));
   };
 }
 
