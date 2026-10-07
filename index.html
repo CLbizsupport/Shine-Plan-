@@ -1134,7 +1134,7 @@ function prepareDoneScreen(){
   otherBtn.textContent = hasPhoto ? "Not using Outlook? Send by other email app"
                                   : "Send with other email app";
   otherHint.textContent = hasPhoto
-    ? "To, Subject and message filled in. Photo is not attached."
+    ? "To and Subject filled in. Attach your photo with the paperclip, then Send."
     : "Your phone will remember your choice.";
   /* "Send again" only makes sense once there is a route to repeat */
   resendBtn.style.display = (iosChoice && !pref) ? "none" : "";
@@ -1150,12 +1150,8 @@ function prepareDoneScreen(){
       goTo(mailtoUrlFor());
       return;
     }
-    var noPhotoBody = lastShare.body
-      .replace(/^Photos: \d+$/m, "Photos: 0")
-      .replace(/"ph":\d+/, '"ph":0');
-    goTo("mailto:" + EMAIL_TO +
-         "?subject=" + encodeURIComponent(lastShare.subject) +
-         "&body=" + encodeURIComponent(noPhotoBody));
+    /* Operator attaches the photo manually, so keep the real photo count */
+    goTo(mailtoUrlFor());
   };
 
   if (iosChoice){
