@@ -930,9 +930,8 @@ function sendNow(){
        shows an error when Outlook is not installed. No choice yet → the
        Completed screen shows the two buttons. */
     if (IS_ANDROID){ goTo(mailtoUrlFor()); return; }
-    var pref = getMailPref();
-    if (pref === "outlook") openMailtoNoPhoto();
-    else if (pref === "other") goTo(mailtoUrlFor());
+    if (getMailPref() === "outlook") openMailtoNoPhoto();
+    else goTo(mailtoUrlFor());   /* default mail app — never errors */
     return;
   }
 
@@ -1125,19 +1124,17 @@ function prepareDoneScreen(){
   var otherHint = document.getElementById("otherMailHint");
   var resendBtn = document.getElementById("resendBtn");
 
-  /* Buttons: photo → "other email app" fallback only.
-     iPhone no-photo → both buttons always (so a wrong choice can be changed).
-     Android no-photo → neither (mailto chooser already lists every app). */
-  outBtn.style.display    = iosChoice ? "" : "none";
-  otherBtn.style.display  = (hasPhoto || iosChoice) ? "" : "none";
-  otherHint.style.display = (hasPhoto || iosChoice) ? "" : "none";
-  otherBtn.textContent = hasPhoto ? "Not using Outlook? Send by other email app"
-                                  : "Send with other email app";
-  otherHint.textContent = hasPhoto
-    ? "To and Subject filled in. Attach your photo with the paperclip, then Send."
-    : "Your phone will remember your choice.";
-  /* "Send again" only makes sense once there is a route to repeat */
-  resendBtn.style.display = (iosChoice && !pref) ? "none" : "";
+  /* Photo → share sheet only, no extra buttons (photo must stay attached).
+     iPhone no-photo → default email app opens automatically (Outlook if it is
+     the phone's default mail app). "Send with Outlook app" switches to the
+     Outlook app and is remembered; "Send with other email app" switches back.
+     Android no-photo → no buttons (mailto chooser lists every app). */
+  outBtn.style.display    = (iosChoice && pref !== "outlook") ? "" : "none";
+  otherBtn.style.display  = (iosChoice && pref === "outlook") ? "" : "none";
+  otherHint.style.display = iosChoice ? "" : "none";
+  otherBtn.textContent    = "Send with other email app";
+  otherHint.textContent   = "Your phone will remember your choice.";
+  resendBtn.style.display = "";
 
   outBtn.onclick = function(){
     setMailPref("outlook");
@@ -1145,23 +1142,16 @@ function prepareDoneScreen(){
   };
   otherBtn.onclick = function(){
     if (!lastShare) return;
-    if (!hasPhoto){
-      setMailPref("other");
-      goTo(mailtoUrlFor());
-      return;
-    }
-    /* Operator attaches the photo manually, so keep the real photo count */
+    setMailPref("other");
     goTo(mailtoUrlFor());
   };
 
   if (iosChoice){
     if (pref === "outlook"){
       msg.innerHTML = 'Outlook has opened with everything filled in.<br>Just press <b>Send</b>.';
-    } else if (pref === "other"){
-      msg.innerHTML = 'Your email app has opened with everything filled in.<br>Just press <b>Send</b>.';
     } else {
-      msg.innerHTML = 'Choose how to send this report.<br>' +
-        'No Outlook on this phone? Tap <b>Send with other email app</b>.';
+      msg.innerHTML = 'Your email app has opened with everything filled in.<br>Just press <b>Send</b>.<br><br>' +
+        '<span style="opacity:.7;font-size:13px">Opened the wrong app? Tap <b>Send with Outlook app</b>.</span>';
     }
     resendBtn.onclick = function(){ sendNow(); };
     return;
@@ -1172,7 +1162,7 @@ function prepareDoneScreen(){
       '<b>1.</b> Pick <b>Outlook</b> from the list — photo attaches automatically<br>' +
       '<b>2.</b> Tap the <b>To</b> field → type or paste <b>' + EMAIL_TO + '</b><br>' +
       '<b>3.</b> Press <b>Send</b><br><br>' +
-      '<span style="opacity:.7;font-size:13px">The address is also at the top of the message body.</span>';
+      '<span style="opacity:.7;font-size:13px">No Outlook? Pick your email app instead. Fill in To the same way — the Subject may be blank, that is OK.</span>';
   } else if (IS_ANDROID){
     msg.innerHTML =
       'Pick <b>Outlook</b> if your phone asks which app to use.<br>' +
