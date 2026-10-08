@@ -287,7 +287,7 @@
     <div class="done-p" id="doneMsg"></div>
     <button class="btn" id="resendBtn" style="margin-top:16px;width:100%">Send again</button>
     <pre class="report" id="reportOut"></pre>
-    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-09-30a</div>
+    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-10-08a</div>
     <button class="btn ghost" id="homeBtn">Home</button>
   </section>
 </main>
@@ -321,7 +321,7 @@ var SITES = {
   "RedLion 2": ["NSSC", "CW - Inbound", "CW - Outbound", "CW - Exceptional Handling"],
   "Changi North 1": ["APDC", "Trimble"],
   "Changi North 5": ["Timken", "Zebra", "Carnival"],
-  "Changi North 6": ["DYSON"]
+  "Changi North 6": ["DYSON", "Lam"]
 };
 
 /* AREAS keyed by "Site|BU|Category" — each Site+BU only sees its own areas.
@@ -468,7 +468,22 @@ var AREAS = {
   /* ──── Changi North 6 / DYSON ──── */
   "Changi North 6|DYSON|Functional Area": ["Office Area", "Loading Bay"],
   "Changi North 6|DYSON|Floor Storage":   ["Inbound Staging", "Outbound Staging"],
-  "Changi North 6|DYSON|Rack Storage":    ["W01 to W28", "D01 to D22"]
+  "Changi North 6|DYSON|Rack Storage":    ["W01 to W28", "D01 to D22"],
+
+  /* ──── Changi North 6 / Lam ──── */
+  "Changi North 6|Lam|Functional Area": [
+    "FGI/BKO/ERP Loading & Unloading Dock",
+    "FGI VAS & 570 Staging",
+    "Office & Meeting Room",
+    "Pantry"
+  ],
+  "Changi North 6|Lam|Floor Storage": [
+    "FGI Storage Bin 6CN05FLR01~04",
+    "FGI Receiving 6CN01FLR01~04 & GR Error Staging & BKO/ERF Storage Bin"
+  ],
+  "Changi North 6|Lam|Rack Storage": [
+    "FGI Storage Bin 6CN07FLR01~05 & Charging Point & Quarantine & Racking"
+  ]
 };
 
 /* Helper — returns the area list for the current Site + BU + Category */
