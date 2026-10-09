@@ -286,8 +286,9 @@
     <div class="done-h">Completed</div>
     <div class="done-p" id="doneMsg"></div>
     <button class="btn" id="resendBtn" style="margin-top:16px;width:100%">Send again</button>
+    <button class="btn ghost" id="outlookBtn" style="width:100%;display:none">Open in Outlook app</button>
     <pre class="report" id="reportOut"></pre>
-    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-10-08a</div>
+    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-10-09a</div>
     <button class="btn ghost" id="homeBtn">Home</button>
   </section>
 </main>
@@ -1086,24 +1087,38 @@ var IS_ANDROID = /Android/i.test(navigator.userAgent || "");
 /* Opens the OUTLOOK APP directly (not iOS Mail) via Outlook's own URL
    scheme. Many operators use personal phones where iOS Mail has no work
    account. If Outlook doesn't take over, fall back to plain mailto:. */
+/* Remembered on this phone once the Outlook app has opened successfully. */
+var MAIL_PREF_KEY = "shine_mail_pref";
+function getMailPref(){ try{ return localStorage.getItem(MAIL_PREF_KEY) || ""; }catch(_){ return ""; } }
+function setMailPref(v){ try{ v ? localStorage.setItem(MAIL_PREF_KEY, v) : localStorage.removeItem(MAIL_PREF_KEY); }catch(_){} }
+
+/* No-photo send. ms-outlook:// is only fired on phones where Outlook has
+   opened before — on a phone without Outlook, Safari shows "cannot open the
+   page because the address is invalid". Every other phone gets mailto:,
+   which opens the phone's default mail app (Outlook if set as default). */
 function openMailtoNoPhoto(){
-  if (IS_ANDROID){
+  if (IS_ANDROID || getMailPref() !== "outlook"){
     goTo(mailtoUrlFor());
     return;
   }
+  openOutlookApp();
+}
 
+/* Opens the OUTLOOK APP directly via Outlook's own URL scheme. If the page
+   is still visible after 2.5s, Outlook isn't installed: forget the choice
+   and fall back to plain mailto:. If Outlook took over, remember it. */
+function openOutlookApp(){
   var mailtoUrl = mailtoUrlFor();
   var handedOff = false;
 
-  function cancelFallback(){ handedOff = true; }
+  function cancelFallback(){ handedOff = true; setMailPref("outlook"); }
   document.addEventListener("visibilitychange", function(){
     if (document.hidden) cancelFallback();
   }, { once: true });
   window.addEventListener("pagehide", cancelFallback, { once: true });
-  window.addEventListener("blur", cancelFallback, { once: true });
 
   setTimeout(function(){
-    if (!handedOff && !document.hidden) goTo(mailtoUrl);
+    if (!handedOff && !document.hidden){ setMailPref(""); goTo(mailtoUrl); }
   }, 2500);
 
   goTo(outlookComposeUrl());
@@ -1125,11 +1140,21 @@ function prepareDoneScreen(){
     msg.innerHTML =
       'Pick <b>Outlook</b> if your phone asks which app to use.<br>' +
       'Everything is filled in — just press <b>Send</b>.';
-  } else {
+  } else if (getMailPref() === "outlook"){
     msg.innerHTML =
       'Outlook has opened with everything filled in.<br>' +
       'Just press <b>Send</b>.';
+  } else {
+    msg.innerHTML =
+      'Your email app has opened with everything filled in.<br>' +
+      'Just press <b>Send</b>.<br><br>' +
+      '<span style="opacity:.7;font-size:13px">Have Outlook on this phone? Tap <b>Open in Outlook app</b> — your phone will remember it.</span>';
   }
+
+  /* "Open in Outlook app" — iPhone, no photo, Outlook not yet remembered */
+  var outBtn = document.getElementById("outlookBtn");
+  outBtn.style.display = (!hasPhoto && !IS_ANDROID && getMailPref() !== "outlook") ? "" : "none";
+  outBtn.onclick = function(){ openOutlookApp(); };
 
   document.getElementById("resendBtn").onclick = function(){
     sendNow();
@@ -1273,22 +1298,9 @@ function resendFromEntry(e){
     files: []
   };
 
-  /* No photo — go direct to mailto/ms-outlook */
-  var isIOS = /iP(hone|ad|od)/.test(navigator.userAgent);
-  if (isIOS){
-    var url = "ms-outlook://compose?to=" + encodeURIComponent(EMAIL_TO) +
-              "&subject=" + encodeURIComponent(subject) +
-              "&body=" + encodeURIComponent(lastShare.body);
-    goTo(url);
-  } else {
-    var mailtoUrl = "mailto:" + EMAIL_TO +
-                   "?subject=" + encodeURIComponent(subject) +
-                   "&body=" + encodeURIComponent(lastShare.body);
-    var win = window.open(mailtoUrl, "_blank");
-    var handedOff = false;
-    if (win){ try{ if (!win.closed) handedOff = true; }catch(_){} }
-    window.location.href = mailtoUrl;
-  }
+  /* No photo — Outlook app only if this phone has opened it before,
+     otherwise mailto (never shows Safari's "address is invalid" error) */
+  openMailtoNoPhoto();
 }
 
 
