@@ -127,6 +127,8 @@
   .pill{display:inline-block;font-size:.75rem;font-weight:800;color:#fff;border-radius:999px;padding:3px 12px}
   .pill.yes{background:var(--ok)}
   .pill.no{background:var(--bad)}
+  .pill.na{background:#9aa3a8}
+  .btn.ghost.niu-on{background:#6b7478;border-color:#6b7478;color:#fff}
   .dcomment{font-size:.8rem;color:var(--bad);margin-top:4px}
   .meta{font-size:.82rem;color:var(--muted);line-height:1.6}
   .done-icon{width:72px;height:72px;border-radius:50%;background:var(--ok);color:#fff;font-size:2.2rem;
@@ -241,6 +243,9 @@
         </div>
       </div>
     </div>
+    <button type="button" class="btn ghost" id="niuBtn" style="margin-top:4px">Area not in use today (skip checklist)</button>
+    <div class="hint" id="niuHint" style="margin:-4px 0 6px">e.g. weekend / no operation. All answers sent as N/A, Remarks = NOT IN USE.</div>
+    <div id="checkWrap">
     <div class="sec">Checklist</div>
     <div id="qList"></div>
     <div class="sec">Remarks</div>
@@ -254,6 +259,7 @@
         <button type="button" class="addphoto" id="addPhotoBtn" aria-label="Add photo">＋</button>
       </div>
       <input type="file" id="photoInput" accept="image/*" multiple hidden>
+    </div>
     </div>
     <button class="submit" id="submitBtn" disabled>Complete required fields</button>
     <div class="hint" id="submitHint"></div>
@@ -288,7 +294,7 @@
     <button class="btn" id="resendBtn" style="margin-top:16px;width:100%">Send again</button>
     <button class="btn ghost" id="outlookBtn" style="width:100%;display:none">Open in Outlook app</button>
     <pre class="report" id="reportOut"></pre>
-    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-10-09a</div>
+    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-10-19a</div>
     <button class="btn ghost" id="homeBtn">Home</button>
   </section>
 </main>
@@ -550,7 +556,8 @@ var CATS = Object.keys(QUESTIONS);
 /* ================= end of editable part ==================== */
 
 
-var state = { site:"", bu:"", cat:"", answers:[], comments:[], shift:null, photos:[] };
+var state = { site:"", bu:"", cat:"", answers:[], comments:[], shift:null, photos:[], niu:false };
+var NIU_REMARK = "NOT IN USE";   /* dashboard turns the area grey on this exact remark */
 var lastShare = null;
 var current = "site";
 var detailFrom = null;
@@ -721,6 +728,7 @@ function startForm(cat){
   document.getElementById("remarks").value = "";
   document.querySelectorAll("#shiftToggle button").forEach(function(b){b.classList.remove("on");});
   renderPhotos();
+  setNotInUse(false);
 
   qList.innerHTML = "";
   qs.forEach(function(q,i){
@@ -800,6 +808,37 @@ function compressImage(file){
   });
 }
 
+/* ── Area not in use: skip checklist, all answers N/A, remark NOT IN USE ── */
+function setNotInUse(on){
+  state.niu = !!on;
+  var btn = document.getElementById("niuBtn");
+  btn.classList.toggle("niu-on", state.niu);
+  btn.textContent = state.niu ? "✓ Marked NOT IN USE — tap to undo"
+                              : "Area not in use today (skip checklist)";
+  document.getElementById("checkWrap").style.display = state.niu ? "none" : "";
+  var qs = QUESTIONS[state.cat] || [];
+  if (state.niu){
+    state.answers = qs.map(function(){ return "N/A"; });
+    state.comments = qs.map(function(){ return ""; });
+    state.photos.forEach(function(p){ URL.revokeObjectURL(p.url); });
+    state.photos = [];
+    renderPhotos();
+  } else {
+    state.answers = qs.map(function(){ return null; });
+    state.comments = qs.map(function(){ return ""; });
+    document.querySelectorAll("#qList .yn button").forEach(function(b){ b.classList.remove("on"); });
+    document.querySelectorAll("#qList .qcomment").forEach(function(c){
+      c.classList.remove("show");
+      var i = c.querySelector("input"); if (i) i.value = "";
+    });
+  }
+  refresh();
+}
+document.getElementById("niuBtn").onclick = function(){ setNotInUse(!state.niu); };
+function getRemarks(){
+  return state.niu ? NIU_REMARK : (document.getElementById("remarks").value.trim() || "N/A");
+}
+
 var submitBtn = document.getElementById("submitBtn");
 function refresh(){
   if (!state.cat) return;
@@ -824,7 +863,7 @@ function refresh(){
 function buildEmailBody(includeSendTo, leadSubject){
   var emp = document.getElementById("empId").value.trim();
   var dt = document.getElementById("dateInput").value;
-  var rmks = document.getElementById("remarks").value.trim() || "N/A";
+  var rmks = getRemarks();
   var ansLine = state.answers.map(function(a,i){
     var s = "Q"+(i+1)+"="+a;
     if (a==="No" && state.comments[i]) s += "("+state.comments[i]+")";
@@ -900,7 +939,7 @@ submitBtn.onclick = function(){
       shift: state.shift,
       no: state.answers.filter(function(a){return a==="No";}).length,
       photos: state.photos.length,
-      rmk: document.getElementById("remarks").value.trim() || "N/A",
+      rmk: getRemarks(),
       ans: state.answers.map(function(a,i){
         return {n:i+1, a:a, c:(a==="No" ? (state.comments[i]||"") : "")};
       })
@@ -1226,7 +1265,7 @@ function showDetail(e){
     qt.textContent = a.n + ". " + (qs[a.n-1] || "Question " + a.n);
     row.appendChild(qt);
     var pill = document.createElement("span");
-    pill.className = "pill " + (a.a==="Yes" ? "yes" : "no");
+    pill.className = "pill " + (a.a==="Yes" ? "yes" : (a.a==="N/A" ? "na" : "no"));
     pill.textContent = a.a;
     row.appendChild(pill);
     if (a.c){
