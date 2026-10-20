@@ -261,6 +261,9 @@
       <input type="file" id="photoInput" accept="image/*" multiple hidden>
     </div>
     </div>
+    <div style="margin-top:16px;padding:10px 12px;border-radius:10px;background:#fdecea;border:1.5px solid var(--bad);color:var(--bad);font-weight:700;font-size:.9rem;text-align:center">
+      ⚠ Report to Supervisor immediately if any not in working condition
+    </div>
     <button class="submit" id="submitBtn" disabled>Complete required fields</button>
     <div class="hint" id="submitHint"></div>
   </section>
@@ -294,7 +297,7 @@
     <button class="btn" id="resendBtn" style="margin-top:16px;width:100%">Send again</button>
     <button class="btn ghost" id="outlookBtn" style="width:100%;display:none">Open in Outlook app</button>
     <pre class="report" id="reportOut"></pre>
-    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-10-19a</div>
+    <div class="hint" style="text-align:center;margin-top:8px;opacity:.6">build 2026-10-20a</div>
     <button class="btn ghost" id="homeBtn">Home</button>
   </section>
 </main>
@@ -390,7 +393,8 @@ var AREAS = {
     "Exception (J2J/RTS/QC Focal)",
     "Kit Cell",
     "One Cell/BO",
-    "Toting"
+    "Toting",
+    "Checks if all printers, monitors & sealer machines are in working condition"
   ],
   "RedLion 2|NSSC|Rack Storage": [
     "TTS Racking"
